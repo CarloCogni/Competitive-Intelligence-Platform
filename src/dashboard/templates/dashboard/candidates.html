@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Competitor Candidates — BlockStream BI{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb: Overview > Alerts > Competitor Candidates -->
+<nav class="text-xs text-gray-500 mb-4">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white">Dashboard</a>
+  <span class="mx-2">/</span>
+  <a href="{% url 'dashboard:alerts' %}" class="hover:text-white">Alerts</a>
+  <span class="mx-2">/</span>
+  <span class="text-gray-300">Competitor Candidates</span>
+</nav>
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-xl font-bold text-white">Competitor Candidates</h1>
+  <div class="flex items-center gap-3">
+    <span class="text-xs text-gray-500">{{ pending_count }} pending</span>
+    {% if pending_count %}
+    <button hx-post="{% url 'dashboard:dismiss_all_candidates' %}"
+            hx-confirm="Dismiss all pending candidates? They will be excluded from future detection."
+            hx-target="#candidates-list"
+            hx-swap="innerHTML"
+            class="px-3 py-1.5 text-xs rounded bg-gray-900 border border-gray-700
+                   text-gray-400 hover:border-red-700 hover:text-red-400 transition-colors">
+      Dismiss all pending
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<p class="text-sm text-gray-500 mb-6">
+  Competitors extracted by AI from news article titles and content.
+  Each candidate includes a category, relevance score, and explanation.
+  Promote to add them as tracked competitors, or dismiss to ignore.
+</p>
+
+<div x-data="{ search: '' }">
+  <!-- Live filter input -->
+  <input type="text" x-model="search"
+         placeholder="Filter by name, category, or description..."
+         class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm
+                text-white placeholder-gray-500 mb-4 focus:outline-none focus:border-blue-600" />
+
+  <div id="candidates-list" class="space-y-3">
+    {% for candidate in candidates %}
+      <div x-show="!search ||
+        '{{ candidate.name|lower|escapejs }}'.includes(search.toLowerCase()) ||
+        '{{ candidate.category|default:""|lower|escapejs }}'.includes(search.toLowerCase()) ||
+        '{{ candidate.llm_reason|default:""|lower|escapejs }}'.includes(search.toLowerCase())">
+        {% include "partials/candidate_row.html" with candidate=candidate %}
+      </div>
+    {% empty %}
+      <div class="text-center text-gray-600 py-12">
+        <p class="text-lg mb-2">No competitor candidates yet</p>
+        <p class="text-sm">Candidates are detected automatically from news article titles during each news fetch cycle.</p>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

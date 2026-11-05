@@ -1,0 +1,13 @@
+<!-- partials/watch_button.html — HTMX swap target for the watch/unwatch toggle -->
+<button id="watch-btn-{{ entity.slug }}"
+        hx-post="{% url 'dashboard:toggle_watch' entity.slug %}"
+        hx-target="#watch-btn-{{ entity.slug }}"
+        hx-swap="outerHTML"
+        class="px-3 py-1 text-xs rounded border transition-colors
+               {% if is_watched %}
+                 border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white
+               {% else %}
+                 border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white
+               {% endif %}">
+  {% if is_watched %}★ Watching{% else %}☆ Watch{% endif %}
+</button>

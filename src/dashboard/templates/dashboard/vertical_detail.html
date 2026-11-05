@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load dashboard_tags %}
+{% block title %}{{ vertical.name }} — BlockStream BI{% endblock %}
+
+{% block content %}
+<div x-data="{ currentVertical: '', searchQuery: '' }">
+
+  <!-- Breadcrumb: Overview > Vertical Name -->
+  <nav class="text-xs text-gray-500 mb-4">
+    <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white">Dashboard</a>
+    <span class="mx-2">/</span>
+    <span class="text-gray-300">{{ vertical.name }}</span>
+  </nav>
+
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-xl font-bold text-white">{{ vertical.name }}</h1>
+    <p class="text-sm text-gray-500">{{ entities|length }} entity/entities</p>
+  </div>
+
+  <!-- Search filter -->
+  <div class="mb-4">
+    <input type="text"
+           x-model="searchQuery"
+           placeholder="Filter by name..."
+           class="bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-300 placeholder-gray-600 focus:border-brand-500 focus:outline-none w-64">
+  </div>
+
+  {% include "partials/entity_table.html" with entities=entities metric_keys=metric_keys metric_labels=metric_labels current_sort=current_sort %}
+
+</div>
+{% endblock %}

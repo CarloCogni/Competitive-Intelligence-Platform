@@ -1,0 +1,17 @@
+<!-- partials/saved_comparisons.html — list of saved H2H comparisons for the current user -->
+{% if saved_comparisons %}
+  <div class="space-y-1">
+    {% for sc in saved_comparisons %}
+    <a href="{% url 'dashboard:head_to_head' %}?a={{ sc.entity_a.slug }}&b={{ sc.entity_b.slug }}"
+       class="flex items-center justify-between px-2 py-1.5 rounded text-xs text-gray-400
+              hover:bg-gray-800 hover:text-white transition-colors group">
+      <span>{{ sc.name }}</span>
+      <span class="text-gray-600 group-hover:text-gray-400 truncate ml-2">
+        {{ sc.entity_a.name }} vs {{ sc.entity_b.name }}
+      </span>
+    </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-gray-600 text-xs">No saved comparisons yet.</p>
+{% endif %}

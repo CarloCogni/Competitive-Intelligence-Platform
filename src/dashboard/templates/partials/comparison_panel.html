@@ -1,0 +1,302 @@
+{% load dashboard_tags %}
+<!-- partials/comparison_panel.html — side-by-side metric comparison -->
+
+{% if entity_a and entity_b %}
+
+<!-- Winner summary banner -->
+<div class="flex items-center justify-between px-5 py-3 bg-gray-800 border border-gray-700 rounded-lg mb-4">
+  <div class="flex items-center gap-3">
+    <a href="{% url 'dashboard:entity_detail' entity_a.slug %}"
+       class="text-white font-semibold hover:text-brand-500 transition-colors">
+      {{ entity_a.name }}
+      {% if entity_a.is_primary %}<span class="ml-1 text-brand-500">●</span>{% endif %}
+    </a>
+    <span class="text-3xl font-bold tabular-nums
+                 {% if wins_a > wins_b %}text-green-400{% elif wins_a < wins_b %}text-gray-400{% else %}text-gray-300{% endif %}">
+      {{ wins_a }}
+    </span>
+  </div>
+  <span class="text-gray-600 text-xs uppercase tracking-widest">metrics won</span>
+  <div class="flex items-center gap-3">
+    <span class="text-3xl font-bold tabular-nums
+                 {% if wins_b > wins_a %}text-green-400{% elif wins_b < wins_a %}text-gray-400{% else %}text-gray-300{% endif %}">
+      {{ wins_b }}
+    </span>
+    <a href="{% url 'dashboard:entity_detail' entity_b.slug %}"
+       class="text-white font-semibold hover:text-brand-500 transition-colors">
+      {% if entity_b.is_primary %}<span class="mr-1 text-brand-500">●</span>{% endif %}
+      {{ entity_b.name }}
+    </a>
+  </div>
+</div>
+
+<!-- Metrics table (4 cols: Metric | A | Δ% | B) -->
+<div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+  <div class="grid grid-cols-4 text-sm">
+    <!-- Header -->
+    <div class="bg-gray-800 p-3 font-semibold text-gray-300">Metric</div>
+    <div class="bg-gray-800 p-3 font-semibold text-center border-l border-gray-700">
+      {{ entity_a.name }}
+    </div>
+    <div class="bg-gray-800 p-3 font-semibold text-center border-l border-gray-700 text-gray-500 text-xs">Δ%</div>
+    <div class="bg-gray-800 p-3 font-semibold text-center border-l border-gray-700">
+      {{ entity_b.name }}
+    </div>
+
+    <!-- Metric rows -->
+    {% for key in all_keys %}
+    {% with va=metrics_a|get_item:key vb=metrics_b|get_item:key %}
+    <div class="p-3 text-gray-500 border-t border-gray-800">{{ key|metric_label:metric_labels }}</div>
+    <div class="p-3 text-center border-t border-l border-gray-800
+                {% if va is not None and vb is not None %}
+                  {% if va > vb %}text-green-400{% elif va < vb %}text-red-400{% else %}text-gray-300{% endif %}
+                {% else %}text-gray-300{% endif %}">
+      {{ va|format_metric:key }}
+    </div>
+    <div class="p-3 text-center border-t border-l border-gray-800 text-gray-500 text-xs">
+      {% with delta=va|percent_delta:vb %}
+        {% if delta %}{{ delta }}{% else %}—{% endif %}
+      {% endwith %}
+    </div>
+    <div class="p-3 text-center border-t border-l border-gray-800
+                {% if va is not None and vb is not None %}
+                  {% if vb > va %}text-green-400{% elif vb < va %}text-red-400{% else %}text-gray-300{% endif %}
+                {% else %}text-gray-300{% endif %}">
+      {{ vb|format_metric:key }}
+    </div>
+    {% endwith %}
+    {% empty %}
+    <div class="col-span-4 p-6 text-center text-gray-600">
+      No metrics available yet for these entities.
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Bottom row: Radar (left) + Trend (right) side by side -->
+<div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+  <!-- Capability Radar -->
+  {% if radar_labels|length >= 3 %}
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+    {% include "partials/chart_toolbar.html" with canvas_id="radar-chart" filename="capability-radar" %}
+    <div class="flex items-center gap-2 mb-3">
+      <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Capability Radar</h3>
+      <button onclick="window.dispatchEvent(new CustomEvent('open-help', { detail: {
+                title: 'Capability Radar',
+                body: '<p class=\'mb-3\'>All shared metrics normalized to 0–100 and plotted as a spider chart. Larger area = stronger entity overall.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-white font-semibold\'>Normalization:</span> The entity with the higher raw value scores 100; the other gets a proportional score.</li><li><span class=\'text-white font-semibold\'>Inverted axis:</span> <em>Days Since Release</em> is flipped — fewer days scores higher.</li><li><span class=\'text-white font-semibold\'>Color:</span> <span class=\'text-brand-500 font-semibold\'>Orange</span> = Blockstream product, blue/purple = competitor.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Requires at least 3 shared metrics. Scores are relative to these two entities only.</p>'
+              }}))"
+              class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+              title="What is this chart?">?</button>
+    </div>
+    <div style="height:300px;position:relative">
+      <canvas id="radar-chart"></canvas>
+    </div>
+  </div>
+  {{ radar_labels|json_script:"radar-labels" }}
+  {{ radar_values_a|json_script:"radar-values-a" }}
+  {{ radar_values_b|json_script:"radar-values-b" }}
+  <script>
+  (function() {
+    const COLORS = {
+      primary:  { border: '#f7931a', bg: 'rgba(247,147,26,0.2)' },
+      blue:     { border: '#60a5fa', bg: 'rgba(96,165,250,0.2)' },
+      purple:   { border: '#a78bfa', bg: 'rgba(167,139,250,0.2)' },
+    };
+    const colA = {{ entity_a.is_primary|lower }} ? COLORS.primary : COLORS.blue;
+    const colB = {{ entity_b.is_primary|lower }} ? COLORS.primary : COLORS.purple;
+
+    new Chart(document.getElementById('radar-chart'), {
+      type: 'radar',
+      data: {
+        labels: JSON.parse(document.getElementById('radar-labels').textContent),
+        datasets: [
+          {
+            label: "{{ entity_a.name|escapejs }}",
+            data: JSON.parse(document.getElementById('radar-values-a').textContent),
+            borderColor: colA.border,
+            backgroundColor: colA.bg,
+            pointBackgroundColor: colA.border,
+            borderWidth: 2,
+          },
+          {
+            label: "{{ entity_b.name|escapejs }}",
+            data: JSON.parse(document.getElementById('radar-values-b').textContent),
+            borderColor: colB.border,
+            backgroundColor: colB.bg,
+            pointBackgroundColor: colB.border,
+            borderWidth: 2,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            min: 0,
+            max: 100,
+            ticks: { display: false, stepSize: 25 },
+            grid: { color: 'rgba(255,255,255,0.1)' },
+            angleLines: { color: 'rgba(255,255,255,0.1)' },
+            pointLabels: { color: '#9ca3af', font: { size: 10 } }
+          }
+        },
+        plugins: {
+          legend: { display: true, labels: { color: '#e5e7eb', font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.parsed.r + '/100'
+            }
+          }
+        }
+      }
+    });
+  })();
+  </script>
+  {% elif entity_a and entity_b %}
+  <p class="text-xs text-gray-600 text-center lg:self-center">
+    Not enough shared metrics for radar chart (need ≥ 3).
+  </p>
+  {% endif %}
+
+  <!-- Trend Comparison (self-contained — no Alpine dependency) -->
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group
+              {% if radar_labels|length < 3 %}lg:col-span-2{% endif %}">
+    {% include "partials/chart_toolbar.html" with canvas_id="dual-trend-chart" filename="trend-comparison" %}
+    <div class="flex flex-wrap items-center gap-3 mb-3">
+      <div class="flex items-center gap-2">
+        <h3 id="trend-title" class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Stars Over Time</h3>
+        <button onclick="window.dispatchEvent(new CustomEvent('open-help', { detail: {
+                  title: 'Trend Race',
+                  body: '<p class=\'mb-3\'>Both entities plotted on the same time axis for one metric. The radar shows the <em>current score</em> — this chart shows the <em>race</em>.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-white font-semibold\'>Metric selector:</span> Use the dropdown to switch metrics — each switch fetches fresh data instantly.</li><li><span class=\'text-white font-semibold\'>Gaps in a line:</span> No data collected for that period.</li><li><span class=\'text-white font-semibold\'>Key question:</span> Is the gap growing or shrinking? A crossing point marks a competitive shift.</li><li><span class=\'text-white font-semibold\'>Hover:</span> Cross-hair tooltip shows both values at the same date.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'><span class=\'text-brand-500\'>Orange</span> = Blockstream product · blue/purple = competitor.</p>'
+                }}))"
+                class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                title="What is this chart?">?</button>
+      </div>
+      <select id="trend-metric-select"
+              onchange="window._updateTrend(this.value)"
+              class="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1 focus:outline-none focus:border-brand-500">
+        {% for key, label in metric_labels.items %}
+        <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div id="trend-no-data" class="hidden text-gray-500 text-sm text-center py-10">
+      No historical data for this metric yet.
+    </div>
+    <div id="trend-wrap" style="height:260px;position:relative">
+      <canvas id="dual-trend-chart"></canvas>
+    </div>
+  </div>
+
+</div><!-- end bottom grid -->
+
+{{ metric_labels|json_script:"cmp-metric-labels" }}
+<script>
+(function() {
+  const slugA = "{{ entity_a.slug|escapejs }}";
+  const slugB = "{{ entity_b.slug|escapejs }}";
+  const metricLabels = JSON.parse(document.getElementById('cmp-metric-labels').textContent);
+  const DUAL_TREND_URL = "{% url 'dashboard:partial_dual_trend' %}";
+
+  const COLORS = {
+    primary: { border: '#f7931a', bg: 'rgba(247,147,26,0.1)' },
+    blue:    { border: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
+    purple:  { border: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
+  };
+
+  let trendChart = null;
+
+  function renderTrend(data) {
+    const noDataEl = document.getElementById('trend-no-data');
+    const wrapEl   = document.getElementById('trend-wrap');
+    if (!noDataEl || !wrapEl) return;
+
+    if (!data.labels.length) {
+      noDataEl.classList.remove('hidden');
+      wrapEl.style.display = 'none';
+      return;
+    }
+    noDataEl.classList.add('hidden');
+    wrapEl.style.display = '';
+
+    // Destroy and recreate to handle scale changes between different metrics
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
+
+    const canvas = document.getElementById('dual-trend-chart');
+    if (!canvas) return;
+
+    const datasets = data.datasets.map((ds, i) => {
+      const col = ds.is_primary ? COLORS.primary : (i === 0 ? COLORS.blue : COLORS.purple);
+      return {
+        label: ds.label,
+        data: ds.values,
+        borderColor: col.border,
+        backgroundColor: col.bg,
+        borderWidth: 2,
+        pointRadius: data.labels.length < 15 ? 3 : 0,
+        tension: 0.3,
+        fill: false,
+        spanGaps: true,
+      };
+    });
+
+    trendChart = new Chart(canvas, {
+      type: 'line',
+      data: { labels: data.labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, labels: { color: '#e5e7eb', font: { size: 11 } } },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.y;
+                return v === null
+                  ? ' ' + ctx.dataset.label + ': —'
+                  : ' ' + ctx.dataset.label + ': ' + v.toLocaleString();
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#9ca3af', font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0 },
+            grid: { color: 'rgba(255,255,255,0.05)' }
+          },
+          y: {
+            ticks: { color: '#9ca3af', font: { size: 10 } },
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            beginAtZero: false,
+          }
+        }
+      }
+    });
+  }
+
+  function fetchTrend(key) {
+    // Update heading to match selected metric
+    const titleEl = document.getElementById('trend-title');
+    if (titleEl) titleEl.textContent = (metricLabels[key] || key) + ' Over Time';
+
+    fetch(DUAL_TREND_URL + '?a=' + slugA + '&b=' + slugB + '&key=' + key)
+      .then(r => r.json())
+      .then(data => renderTrend(data))
+      .catch(() => {});
+  }
+
+  // Expose so the select's onchange can always call the latest closure
+  window._updateTrend = fetchTrend;
+
+  // Auto-load on partial insert
+  fetchTrend('github_stars');
+})();
+</script>
+
+{% else %}
+<p class="text-gray-600 text-sm">Select two entities to compare.</p>
+{% endif %}

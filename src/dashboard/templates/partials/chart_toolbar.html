@@ -1,0 +1,29 @@
+<!-- partials/chart_toolbar.html — hover toolbar for Chart.js chart cards
+     Parent card div must have classes: relative group
+-->
+<div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
+
+  <!-- Export PNG -->
+  <button onclick="ChartToolbar.export('{{ canvas_id }}', '{{ filename|default:canvas_id }}')"
+          class="p-1.5 rounded bg-gray-800/80 border border-gray-700/60 text-gray-400 hover:text-brand-500 hover:border-brand-500/40 backdrop-blur-sm transition-colors"
+          title="Download as PNG">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+    </svg>
+  </button>
+
+  <!-- Fullscreen toggle -->
+  <button onclick="ChartToolbar.fullscreen(this)"
+          class="p-1.5 rounded bg-gray-800/80 border border-gray-700/60 text-gray-400 hover:text-brand-500 hover:border-brand-500/40 backdrop-blur-sm transition-colors"
+          title="Fullscreen">
+    <!-- expand icon (shown when not fullscreen) -->
+    <svg class="chart-toolbar-expand w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/>
+    </svg>
+    <!-- compress icon (shown when fullscreen) -->
+    <svg class="chart-toolbar-compress w-3.5 h-3.5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>
+    </svg>
+  </button>
+
+</div>

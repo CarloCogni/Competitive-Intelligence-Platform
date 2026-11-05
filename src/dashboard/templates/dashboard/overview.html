@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}Overview — BlockStream BI{% endblock %}
+
+{% block content %}
+<div x-data="{ currentVertical: '', searchQuery: '' }">
+
+  <!-- Page heading -->
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-xl font-bold text-white">Entity Overview</h1>
+  </div>
+
+  <!-- KPI summary cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3">
+      <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Tracked</p>
+      <p class="text-2xl font-bold text-white">{{ total_count }}</p>
+      <p class="text-xs text-gray-600 mt-0.5">total entities</p>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3">
+      <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Blockstream</p>
+      <p class="text-2xl font-bold text-brand-500">{{ primary_count }}</p>
+      <p class="text-xs text-gray-600 mt-0.5">own products</p>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3">
+      <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Competitors</p>
+      <p class="text-2xl font-bold text-gray-300">{{ competitor_count }}</p>
+      <p class="text-xs text-gray-600 mt-0.5">tracked rivals</p>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3">
+      <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Alerts</p>
+      <p class="text-2xl font-bold {% if unseen_alert_count %}text-red-400{% else %}text-gray-600{% endif %}">
+        {{ unseen_alert_count }}
+      </p>
+      <p class="text-xs mt-0.5">
+        {% if unseen_alert_count %}
+          <a href="{% url 'dashboard:alerts' %}" class="text-red-400 hover:text-red-300 transition-colors">view unseen →</a>
+        {% else %}
+          <span class="text-gray-600">all caught up</span>
+        {% endif %}
+      </p>
+    </div>
+
+  </div>
+
+  <!-- Ranking bar chart — updates when sort metric changes, auto-refreshes every 60s -->
+  <div x-data="rankingChart()"
+       class="mb-6 bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+    {% include "partials/chart_toolbar.html" with canvas_id="ranking-bar-chart" filename="entity-ranking" %}
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+          Ranking — <span x-text="chartLabel">Stars</span>
+        </h2>
+        <button @click="$dispatch('open-help', {
+                  title: 'Competitive Ranking',
+                  body: `
+                    <p class=\'mb-3\'>Ranks all tracked entities by the currently selected metric — stars, forks, open issues, app rating, and more.</p>
+                    <ul class=\'space-y-2 list-none\'>
+                      <li><span class=\'text-brand-500 font-semibold\'>Reading it:</span> Longer bar = higher value. <span class=\'text-brand-500\'>Orange</span> bars are Blockstream products; gray bars are competitors.</li>
+                      <li><span class=\'text-white font-semibold\'>Sorting:</span> Click any column header in the table below — the chart switches metric automatically.</li>
+                      <li><span class=\'text-white font-semibold\'>Navigation:</span> Click a bar to open that entity\'s detail page.</li>
+                      <li><span class=\'text-white font-semibold\'>Live data:</span> Refreshes every 60 seconds in the background — no page reload, no flicker. The countdown in the top-right shows exactly when the next update fires.</li>
+                    </ul>
+                    <p class=\'mt-3 text-gray-500 text-xs\'>Data source: GitHub API · App Store API · collected on a rolling 24h schedule.</p>
+                  `
+                })"
+                class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                title="What is this chart?">?</button>
+      </div>
+      <span class="text-xs text-gray-500 flex items-center gap-1.5">
+        <span :class="loading ? 'animate-spin' : ''" class="inline-block">↻</span>
+        <span x-text="loading ? 'updating…' : 'refresh in ' + countdown + 's'"></span>
+      </span>
+    </div>
+    <div class="relative" style="height:420px">
+      <canvas id="ranking-bar-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Vertical filter + name search — sits directly above the table it controls -->
+  <div class="mb-3">
+  <div class="flex flex-wrap items-center gap-2 mb-2">
+    <span class="text-xs text-gray-500 mr-1">Filter by vertical:</span>
+    <button
+      @click="currentVertical = ''"
+      :class="currentVertical === '' ? 'bg-brand-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+      class="px-3 py-1 rounded text-xs transition-colors">
+      All
+    </button>
+    {% for v in verticals %}
+    <button
+      @click="currentVertical = '{{ v.slug }}'"
+      :class="currentVertical === '{{ v.slug }}' ? 'bg-brand-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+      class="px-3 py-1 rounded text-xs transition-colors">
+      {{ v.name }}
+    </button>
+    {% endfor %}
+  </div>
+  <div>
+    <input
+      type="text"
+      x-model="searchQuery"
+      placeholder="Filter by name…"
+      class="w-full max-w-xs rounded border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+    >
+  </div>
+  </div>
+
+  <!-- Entity table — HTMX swap target (sort only, vertical is client-side) -->
+  <div id="entity-table"
+       hx-get="{% url 'dashboard:partial_entity_table' %}"
+       hx-trigger="load"
+       hx-vals='{"sort": "{{ current_sort }}"}'
+       hx-swap="outerHTML">
+    {% include "partials/entity_table.html" %}
+  </div>
+
+</div>
+
+<script>
+function rankingChart() {
+  const INTERVAL = 60;
+  // Plain JS variables — kept outside Alpine reactive scope to avoid proxy-resolution
+  // issues when accessed from Chart.js event callbacks and native canvas listeners.
+  let currentSlugs = [];
+  let chartInstance = null;
+
+  return {
+    chartLabel: '',
+    currentKey: '{{ current_sort }}' === 'name' ? 'github_stars' : '{{ current_sort }}',
+    countdown: INTERVAL,
+    loading: false,
+
+    init() {
+      this.load();
+
+      // 1-second tick drives the countdown display
+      setInterval(() => {
+        this.countdown -= 1;
+        if (this.countdown <= 0) {
+          this.countdown = INTERVAL;
+          this.load();
+        }
+      }, 1000);
+
+      // Re-sync when user clicks a sort column (HTMX swaps #entity-table)
+      document.body.addEventListener('htmx:afterSwap', (e) => {
+        if (e.detail.target && e.detail.target.id === 'entity-table') {
+          const params = new URLSearchParams(
+            e.detail.requestConfig && e.detail.requestConfig.parameters || {}
+          );
+          const key = params.get('sort');
+          if (key && key !== 'name') {
+            this.currentKey = key;
+            this.countdown = INTERVAL;  // reset timer when metric changes
+            this.load();
+          }
+        }
+      });
+    },
+
+    load() {
+      this.loading = true;
+      fetch(`{% url 'dashboard:partial_ranking_chart' %}?key=${this.currentKey}`)
+        .then(r => r.json())
+        .then(d => { currentSlugs = d.slugs; this.chartLabel = d.label; this.render(d); })
+        .catch(() => {})
+        .finally(() => { this.loading = false; });
+    },
+
+    render(d) {
+      const canvas = document.getElementById('ranking-bar-chart');
+      if (!canvas) return;
+
+      if (!d.values.length) {
+        canvas.parentElement.innerHTML =
+          '<p class="text-gray-600 text-sm text-center pt-16">No data for this metric yet. Run the fetchers first.</p>';
+        return;
+      }
+
+      if (chartInstance) {
+        // In-place update — avoids destroy/recreate flicker on 60s refresh
+        chartInstance.data.labels = d.labels;
+        chartInstance.data.datasets[0].data = d.values;
+        chartInstance.data.datasets[0].backgroundColor = d.colors;
+        chartInstance.update('active');
+        return;
+      }
+
+      chartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: d.labels,
+          datasets: [{
+            data: d.values,
+            backgroundColor: d.colors,
+            borderRadius: 3,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ' ' + ctx.parsed.x.toLocaleString()
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#9ca3af', font: { size: 11 } }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: '#e5e7eb', font: { size: 11 }, autoSkip: false }
+            }
+          }
+        }
+      });
+
+      // Native canvas listeners — bypass Alpine's Proxy so Chart.js APIs work reliably.
+      // Handles clicks on bars and on y-axis entity name labels.
+      canvas.addEventListener('click', (e) => {
+        if (!chartInstance) return;
+        const hits = chartInstance.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+        if (hits.length) {
+          const slug = currentSlugs[hits[0].index];
+          if (slug) { window.location.href = '/entity/' + slug + '/'; }
+          return;
+        }
+        // Y-axis label area (left of the plot)
+        const yAxis = chartInstance.scales.y;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        if (x <= yAxis.left) {
+          for (let i = 0; i < chartInstance.data.labels.length; i++) {
+            if (Math.abs(y - yAxis.getPixelForTick(i)) <= 12) {
+              const slug = currentSlugs[i];
+              if (slug) { window.location.href = '/entity/' + slug + '/'; }
+              return;
+            }
+          }
+        }
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (!chartInstance) return;
+        const hits = chartInstance.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+        if (hits.length) { canvas.style.cursor = 'pointer'; return; }
+        const yAxis = chartInstance.scales.y;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        if (x <= yAxis.left) {
+          for (let i = 0; i < chartInstance.data.labels.length; i++) {
+            if (Math.abs(y - yAxis.getPixelForTick(i)) <= 12) {
+              canvas.style.cursor = 'pointer';
+              return;
+            }
+          }
+        }
+        canvas.style.cursor = 'default';
+      });
+    }
+  };
+}
+</script>
+{% endblock %}

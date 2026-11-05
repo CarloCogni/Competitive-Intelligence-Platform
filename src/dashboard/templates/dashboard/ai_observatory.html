@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+{% block title %}AI Observatory — BlockStream BI{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav class="text-xs text-gray-500 mb-4">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white">Dashboard</a>
+  <span class="mx-2">/</span>
+  <span class="text-gray-300">AI Observatory</span>
+</nav>
+
+<div class="mb-6">
+  <h1 class="text-xl font-bold text-white">AI Observatory</h1>
+  <p class="text-xs text-gray-500 mt-0.5">Anomaly Detection + GA Compound Rules — operational health and evolution</p>
+</div>
+
+<!-- ROW 1: KPI Stat Cards -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+  <!-- Anomaly Detection KPIs -->
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+    <p class="text-xs text-gray-500 mb-1">Models Trained</p>
+    <p class="text-2xl font-bold text-brand-500">{{ total_models }}</p>
+    <p class="text-xs text-gray-600 mt-1">Isolation Forest</p>
+  </div>
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+    <p class="text-xs text-gray-500 mb-1">Entities Covered</p>
+    <p class="text-2xl font-bold text-white">{{ entities_covered }}</p>
+    <p class="text-xs text-gray-600 mt-1">with trained models</p>
+  </div>
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+    <p class="text-xs text-gray-500 mb-1">Metric Keys</p>
+    <p class="text-2xl font-bold text-white">{{ metrics_covered }}</p>
+    <p class="text-xs text-gray-600 mt-1">{{ dynamic_count }} dynamic / {{ static_count }} static</p>
+  </div>
+
+  <!-- GA KPIs -->
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+    <p class="text-xs text-gray-500 mb-1">Active Rules</p>
+    <p class="text-2xl font-bold text-purple-400">{{ active_rule_count }}</p>
+    <p class="text-xs text-gray-600 mt-1">compound alert rules</p>
+  </div>
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+    <p class="text-xs text-gray-500 mb-1">Avg Precision</p>
+    <p class="text-2xl font-bold text-green-400">{{ avg_precision|floatformat:1 }}%</p>
+    <p class="text-xs text-gray-600 mt-1">recall {{ avg_recall|floatformat:1 }}%</p>
+  </div>
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+    <p class="text-xs text-gray-500 mb-1">Training Labels</p>
+    <p class="text-2xl font-bold text-blue-400">{{ labels_positive|add:labels_negative }}</p>
+    <p class="text-xs text-gray-600 mt-1">
+      <span class="text-emerald-400">{{ labels_positive }} useful</span> /
+      <span class="text-amber-400">{{ labels_negative }} noise</span>
+      {% if labels_neutral %}<span class="text-gray-600"> · {{ labels_neutral }} neutral</span>{% endif %}
+    </p>
+  </div>
+</div>
+
+<!-- ROW 2: Two-column charts -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+  <!-- LEFT: Anomaly Detection -->
+  <div class="space-y-4">
+    <div class="flex items-center gap-2">
+      <h2 class="text-sm font-semibold text-brand-500">Anomaly Detection</h2>
+      <button onclick="window.dispatchEvent(new CustomEvent('open-help', { detail: {
+                title: 'Anomaly Detection \u2014 Isolation Forest',
+                body: '<p class=\'mb-3\'>Each tracked entity gets its own <strong>Isolation Forest</strong> machine learning model trained on historical metric changes. Instead of using one fixed threshold for everyone (e.g. &quot;alert if stars change &gt;20%&quot;), the system learns what <em>normal variance</em> looks like for each entity individually.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-brand-500 font-semibold\'>Why it matters:</span> A 15% star increase is noise for a 500-star project but a real event for a 50,000-star one. Dynamic thresholds eliminate this false-positive problem.</li><li><span class=\'text-brand-500 font-semibold\'>Training:</span> Models retrain automatically on the 1st of each month. An LLM reviews data quality before training and can suggest cold-start thresholds for new entities.</li><li><span class=\'text-brand-500 font-semibold\'>Detection:</span> Runs every fetch cycle (no LLM involved \u2014 pure statistics, sub-millisecond). Falls back to static thresholds if no model exists yet.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Models stored as .joblib files. Toggle per metric in Django Admin \u2192 Delta Thresholds \u2192 use_dynamic_threshold.</p>'
+              }}))"
+              class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+              title="What is Anomaly Detection?">?</button>
+      <a href="{% url 'dashboard:ai_threshold_evolution_page' %}"
+         class="text-xs text-brand-500 hover:text-brand-400 border border-brand-500/30 rounded px-2 py-0.5 transition-colors ml-auto">
+        Threshold Evolution →
+      </a>
+    </div>
+
+    <!-- Alert Severity Timeline -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+      {% include "partials/chart_toolbar.html" with canvas_id="chart-severity" filename="severity-timeline" %}
+      <h3 class="text-xs font-medium text-gray-400 mb-3">Alert Severity Timeline (90d)</h3>
+      <div style="height:200px;position:relative">
+        <canvas id="chart-severity"></canvas>
+      </div>
+      <p id="severity-empty" class="text-xs text-gray-600 text-center py-8 hidden">No anomaly alerts in the last 90 days.</p>
+    </div>
+
+    <!-- Model Coverage -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+      {% include "partials/chart_toolbar.html" with canvas_id="chart-coverage" filename="model-coverage" %}
+      <h3 class="text-xs font-medium text-gray-400 mb-3">Model Coverage by Metric</h3>
+      <div style="height:200px;position:relative">
+        <canvas id="chart-coverage"></canvas>
+      </div>
+      <p id="coverage-empty" class="text-xs text-gray-600 text-center py-8 hidden">No trained models found. Run: manage.py train_anomaly_models</p>
+    </div>
+
+    <!-- 30d summary -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+      <h3 class="text-xs font-medium text-gray-400 mb-2">Last 30 Days</h3>
+      <div class="flex items-center gap-6">
+        <div>
+          <span class="text-lg font-bold text-yellow-400">{{ spike_alerts_30d }}</span>
+          <span class="text-xs text-gray-500 ml-1">anomaly alerts fired</span>
+        </div>
+        <div>
+          <span class="text-lg font-bold text-white">{{ dynamic_count }}</span>
+          <span class="text-xs text-gray-500 ml-1">dynamic thresholds</span>
+        </div>
+        <div>
+          <span class="text-lg font-bold text-gray-400">{{ static_count }}</span>
+          <span class="text-xs text-gray-500 ml-1">static thresholds</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: GA Optimizer -->
+  <div class="space-y-4">
+    <div class="flex items-center gap-2">
+      <h2 class="text-sm font-semibold text-purple-400">GA Compound Rules</h2>
+      <button onclick="window.dispatchEvent(new CustomEvent('open-help', { detail: {
+                title: 'GA Compound Rules \u2014 Genetic Algorithm',
+                body: '<p class=\'mb-3\'>A <strong>Genetic Algorithm</strong> automatically discovers multi-metric alert rules by evolving a population of candidate rules over generations. Instead of firing on single metrics (&quot;stars up 20%&quot;), compound rules detect patterns across signals (&quot;stars up 15% AND news mentions up 100%&quot;) \u2014 the kind of multi-signal events that indicate real competitive moves.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-purple-400 font-semibold\'>How you shape it:</span> Each alert has two dismiss buttons: <strong>\u2713 Useful</strong> and <strong>\u2717 Noise</strong>. Marking an alert as useful tells the GA &quot;this pattern matters&quot;; marking it as noise says &quot;don\'t alert me for this.&quot; Alerts you leave untouched are simply ignored by the GA \u2014 no assumptions are made about alerts you haven\'t reviewed.</li><li><span class=\'text-purple-400 font-semibold\'>Self-evolving:</span> The GA also improves on its own. Rules using rare metric combinations get a <em>novelty bonus</em>, rules that no longer match recent data receive a <em>staleness penalty</em>, and near-duplicate rules are pruned via <em>diversity pressure</em>. Even without feedback, the system keeps evolving.</li><li><span class=\'text-purple-400 font-semibold\'>Evolution:</span> Rules compete via tournament selection. The fittest (most precise) survive, crossover, and mutate. A complexity penalty keeps rules simple. Minimum 3 historical matches prevents overfitting.</li><li><span class=\'text-purple-400 font-semibold\'>Optimization:</span> Runs automatically on the 1st of each month. The fitness score uses F-beta (beta=0.5), favoring <em>precision</em> over recall \u2014 better to miss one event than to flood you with false alarms.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Manage rules in Django Admin \u2192 Compound Rules. Training labels come from your \u2713/\u2717 feedback on alerts.</p>'
+              }}))"
+              class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+              title="What are GA Compound Rules?">?</button>
+    </div>
+
+    <!-- Fitness Evolution Across Runs -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+      {% include "partials/chart_toolbar.html" with canvas_id="chart-fitness-runs" filename="fitness-evolution" %}
+      <h3 class="text-xs font-medium text-gray-400 mb-3">Fitness Evolution Across Runs</h3>
+      <div style="height:200px;position:relative">
+        <canvas id="chart-fitness-runs"></canvas>
+      </div>
+      <p id="fitness-empty" class="text-xs text-gray-600 text-center py-8 hidden">No GA runs yet. Run: manage.py optimize_alert_rules</p>
+    </div>
+
+    <!-- Latest Run Convergence -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+      {% include "partials/chart_toolbar.html" with canvas_id="chart-convergence" filename="ga-convergence" %}
+      <h3 class="text-xs font-medium text-gray-400 mb-3">Latest Run — Convergence Curve</h3>
+      <div style="height:200px;position:relative">
+        <canvas id="chart-convergence"></canvas>
+      </div>
+      <p id="convergence-empty" class="text-xs text-gray-600 text-center py-8 hidden">No convergence data available.</p>
+    </div>
+
+    <!-- 30d summary -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+      <h3 class="text-xs font-medium text-gray-400 mb-2">Last 30 Days</h3>
+      <div class="flex items-center gap-6">
+        <div>
+          <span class="text-lg font-bold text-purple-400">{{ compound_alerts_30d }}</span>
+          <span class="text-xs text-gray-500 ml-1">compound alerts fired</span>
+        </div>
+        <div>
+          <span class="text-lg font-bold text-white">{{ active_rule_count }}</span>
+          <span class="text-xs text-gray-500 ml-1">active rules</span>
+        </div>
+        {% if latest_ga %}
+        <div>
+          <span class="text-lg font-bold text-green-400">{{ latest_ga.best_fitness|floatformat:3 }}</span>
+          <span class="text-xs text-gray-500 ml-1">best fitness</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 3: Full-width alert volume comparison -->
+<div class="mb-8">
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+    {% include "partials/chart_toolbar.html" with canvas_id="chart-volume" filename="alert-volume" %}
+    <h3 class="text-xs font-medium text-gray-400 mb-3">Alert Volume — Anomaly vs Compound (90d weekly)</h3>
+    <div style="height:220px;position:relative">
+      <canvas id="chart-volume"></canvas>
+    </div>
+    <p id="volume-empty" class="text-xs text-gray-600 text-center py-8 hidden">No AI-generated alerts in the last 90 days.</p>
+  </div>
+</div>
+
+<!-- ROW 4: Two tables side by side -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+  <!-- Active Compound Rules -->
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+    <div class="flex items-center gap-2 mb-3">
+      <h3 class="text-xs font-medium text-gray-400">Active Compound Rules</h3>
+      <button onclick="window.dispatchEvent(new CustomEvent('open-help', { detail: {
+                title: 'Active Compound Rules',
+                body: '<p class=\'mb-3\'>Compound rules are <strong>multi-metric alert rules</strong> evolved via a genetic algorithm. Instead of alerting on a single metric (e.g. &quot;stars changed &gt;10%&quot;), a compound rule combines several conditions (e.g. stars up AND forks up AND commit frequency down) to produce more meaningful signals with fewer false positives.</p><p class=\'mb-3 text-gray-400\'>Rules are generated by running <code class=\'text-brand-500\'>manage.py optimize_alert_rules</code>, which evolves candidate rules over multiple generations, scoring them against historical alert outcomes.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-purple-400 font-semibold\'>Fitness:</span> Overall quality score combining precision, recall, and rule complexity. Higher is better.</li><li><span class=\'text-brand-500 font-semibold\'>Precision:</span> Of all alerts this rule triggered, what % were true positives. High precision = few false alarms.</li><li><span class=\'text-brand-500 font-semibold\'>Recall:</span> Of all real events that occurred, what % did this rule catch. High recall = few missed events.</li><li><span class=\'text-brand-500 font-semibold\'>F1:</span> Harmonic mean of precision and recall — a single balanced score.</li><li><span class=\'text-green-400 font-semibold\'>TP (True Positives):</span> Number of correct alerts triggered.</li><li><span class=\'text-red-400 font-semibold\'>FP (False Positives):</span> Number of incorrect alerts triggered.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Color coding: <span class=\'text-green-400\'>\u2265 0.80</span> = strong, <span class=\'text-yellow-400\'>\u2265 0.50</span> = moderate, <span class=\'text-red-400\'>&lt; 0.50</span> = weak. Only rules that passed fitness thresholds during evolution appear here.</p>'
+              }}))"
+              class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+              title="What are Compound Rules?">?</button>
+    </div>
+    {% if active_rules %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="text-gray-500 border-b border-gray-800">
+            <th class="text-left py-2 pr-3">Name</th>
+            <th class="text-right py-2 px-2">Fitness</th>
+            <th class="text-right py-2 px-2">Prec</th>
+            <th class="text-right py-2 px-2">Recall</th>
+            <th class="text-right py-2 px-2">F1</th>
+            <th class="text-right py-2 px-2">TP</th>
+            <th class="text-right py-2 pl-2">FP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rule in active_rules %}
+          <tr class="border-b border-gray-800/50 hover:bg-gray-800/30">
+            <td class="py-2 pr-3 text-gray-300 max-w-[200px] truncate" title="{{ rule.name }}">{{ rule.name }}</td>
+            <td class="py-2 px-2 text-right text-purple-400 font-mono">{{ rule.fitness_score|floatformat:3 }}</td>
+            <td class="py-2 px-2 text-right font-mono">
+              <span class="{% if rule.precision >= 0.8 %}text-green-400{% elif rule.precision >= 0.5 %}text-yellow-400{% else %}text-red-400{% endif %}">
+                {{ rule.precision|floatformat:2 }}
+              </span>
+            </td>
+            <td class="py-2 px-2 text-right font-mono">
+              <span class="{% if rule.recall >= 0.8 %}text-green-400{% elif rule.recall >= 0.5 %}text-yellow-400{% else %}text-red-400{% endif %}">
+                {{ rule.recall|floatformat:2 }}
+              </span>
+            </td>
+            <td class="py-2 px-2 text-right text-gray-400 font-mono">{{ rule.f1_score|floatformat:2 }}</td>
+            <td class="py-2 px-2 text-right text-green-400 font-mono">{{ rule.true_positives }}</td>
+            <td class="py-2 pl-2 text-right text-red-400 font-mono">{{ rule.false_positives }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-xs text-gray-600 text-center py-6">No active compound rules. Run: manage.py optimize_alert_rules</p>
+    {% endif %}
+  </div>
+
+  <!-- GA Run History -->
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+    <h3 class="text-xs font-medium text-gray-400 mb-3">GA Run History</h3>
+    {% if ga_runs %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="text-gray-500 border-b border-gray-800">
+            <th class="text-left py-2 pr-2">#</th>
+            <th class="text-left py-2 px-2">Date</th>
+            <th class="text-left py-2 px-2">Status</th>
+            <th class="text-right py-2 px-2">Pop</th>
+            <th class="text-right py-2 px-2">Gen</th>
+            <th class="text-right py-2 px-2">Fitness</th>
+            <th class="text-right py-2 px-2">Rules</th>
+            <th class="text-right py-2 pl-2">Labels +/-</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in ga_runs %}
+          <tr class="border-b border-gray-800/50 hover:bg-gray-800/30">
+            <td class="py-2 pr-2 text-gray-500 font-mono">{{ run.pk }}</td>
+            <td class="py-2 px-2 text-gray-400">{{ run.started_at|date:"M d, Y" }}</td>
+            <td class="py-2 px-2">
+              <span class="px-1.5 py-0.5 rounded text-xs font-semibold
+                {% if run.status == 'success' %}bg-green-900 text-green-300
+                {% elif run.status == 'no_rules' %}bg-gray-700 text-gray-400
+                {% elif run.status == 'failed' %}bg-red-900 text-red-300
+                {% else %}bg-yellow-900 text-yellow-300{% endif %}">
+                {{ run.get_status_display }}
+              </span>
+            </td>
+            <td class="py-2 px-2 text-right text-gray-400 font-mono">{{ run.population_size }}</td>
+            <td class="py-2 px-2 text-right text-gray-400 font-mono">{{ run.generations }}</td>
+            <td class="py-2 px-2 text-right text-purple-400 font-mono">
+              {% if run.best_fitness %}{{ run.best_fitness|floatformat:3 }}{% else %}—{% endif %}
+            </td>
+            <td class="py-2 px-2 text-right text-gray-300 font-mono">{{ run.rules_produced }}</td>
+            <td class="py-2 pl-2 text-right text-gray-400 font-mono">{{ run.labeled_positives }}/{{ run.labeled_negatives }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-xs text-gray-600 text-center py-6">No GA runs recorded yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Chart.js rendering -->
+<script>
+(function () {
+  var GRID = { color: "rgba(255,255,255,0.04)" };
+  var TICKS = { color: "#6b7280", font: { size: 10 } };
+  var INT_TICKS = { color: "#6b7280", font: { size: 10 }, stepSize: 1, precision: 0 };
+
+  function hide(id) { document.getElementById(id).classList.remove("hidden"); }
+
+  Promise.all([
+    fetch("{% url 'dashboard:ai_anomaly_data' %}").then(function (r) { return r.json(); }),
+    fetch("{% url 'dashboard:ai_ga_data' %}").then(function (r) { return r.json(); }),
+    fetch("{% url 'dashboard:ai_alert_volume_data' %}").then(function (r) { return r.json(); }),
+  ]).then(function (results) {
+    var anomaly = results[0];
+    var ga = results[1];
+    var volume = results[2];
+
+    renderSeverityTimeline(anomaly.severity_timeline);
+    renderModelCoverage(anomaly.model_coverage);
+    renderFitnessRuns(ga.fitness_over_time);
+    renderConvergence(ga.convergence);
+    renderAlertVolume(volume);
+  });
+
+  /* ---- Chart 1: Alert Severity Timeline (stacked bar) ---- */
+  function renderSeverityTimeline(data) {
+    var canvas = document.getElementById("chart-severity");
+    if (!data.labels.length) { canvas.style.display = "none"; hide("severity-empty"); return; }
+
+    new Chart(canvas, {
+      type: "bar",
+      data: {
+        labels: data.labels,
+        datasets: [
+          { label: "HIGH", data: data.high, backgroundColor: "rgba(239,68,68,0.7)", borderRadius: 2 },
+          { label: "MEDIUM", data: data.medium, backgroundColor: "rgba(245,158,11,0.7)", borderRadius: 2 },
+          { label: "LOW", data: data.low, backgroundColor: "rgba(96,165,250,0.7)", borderRadius: 2 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: "#9ca3af", font: { size: 10 }, boxWidth: 10, padding: 8 } } },
+        scales: {
+          x: { stacked: true, grid: GRID, ticks: TICKS },
+          y: { stacked: true, grid: GRID, ticks: INT_TICKS, beginAtZero: true },
+        },
+      },
+    });
+  }
+
+  /* ---- Chart 2: Model Coverage (horizontal bar) ---- */
+  function renderModelCoverage(data) {
+    var canvas = document.getElementById("chart-coverage");
+    if (!data.labels.length) { canvas.style.display = "none"; hide("coverage-empty"); return; }
+
+    new Chart(canvas, {
+      type: "bar",
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: "Entities with model",
+          data: data.counts,
+          backgroundColor: "rgba(247,147,26,0.7)",
+          borderColor: "#f7931a",
+          borderWidth: 1,
+          borderRadius: 2,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: "y",
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: GRID, ticks: INT_TICKS, beginAtZero: true },
+          y: { grid: { display: false }, ticks: TICKS },
+        },
+      },
+    });
+  }
+
+  /* ---- Chart 3: Fitness Evolution Across Runs (dual Y-axis line) ---- */
+  function renderFitnessRuns(data) {
+    var canvas = document.getElementById("chart-fitness-runs");
+    if (!data.labels.length) { canvas.style.display = "none"; hide("fitness-empty"); return; }
+
+    new Chart(canvas, {
+      type: "line",
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            label: "Best Fitness",
+            data: data.best_fitness,
+            borderColor: "#a78bfa",
+            backgroundColor: "rgba(167,139,250,0.1)",
+            tension: 0.3, pointRadius: 4, pointBackgroundColor: "#a78bfa",
+            yAxisID: "y",
+          },
+          {
+            label: "Training Labels",
+            data: data.labeled_positives,
+            borderColor: "#60a5fa",
+            backgroundColor: "rgba(96,165,250,0.1)",
+            tension: 0.3, pointRadius: 3, pointBackgroundColor: "#60a5fa",
+            borderDash: [4, 4],
+            yAxisID: "y1",
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: "#9ca3af", font: { size: 10 }, boxWidth: 10, padding: 8 } } },
+        scales: {
+          x: { grid: GRID, ticks: TICKS },
+          y: {
+            position: "left", grid: GRID, ticks: TICKS, beginAtZero: true,
+            title: { display: true, text: "Fitness", color: "#9ca3af", font: { size: 10 } },
+          },
+          y1: {
+            position: "right", grid: { display: false }, ticks: TICKS, beginAtZero: true,
+            title: { display: true, text: "Labels", color: "#9ca3af", font: { size: 10 } },
+          },
+        },
+      },
+    });
+  }
+
+  /* ---- Chart 4: Convergence Curve (line + area fill) ---- */
+  function renderConvergence(data) {
+    var canvas = document.getElementById("chart-convergence");
+    if (!data.labels.length) { canvas.style.display = "none"; hide("convergence-empty"); return; }
+
+    new Chart(canvas, {
+      type: "line",
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: "Best Fitness",
+          data: data.values,
+          borderColor: "#a78bfa",
+          backgroundColor: "rgba(167,139,250,0.15)",
+          fill: true, tension: 0.3, pointRadius: 0,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            grid: GRID, ticks: TICKS,
+            title: { display: true, text: "Generation", color: "#9ca3af", font: { size: 10 } },
+          },
+          y: {
+            grid: GRID, ticks: TICKS, beginAtZero: true,
+            title: { display: true, text: "Fitness", color: "#9ca3af", font: { size: 10 } },
+          },
+        },
+      },
+    });
+  }
+
+  /* ---- Chart 5: Alert Volume Comparison (grouped bar + line) ---- */
+  function renderAlertVolume(data) {
+    var canvas = document.getElementById("chart-volume");
+    if (!data.labels.length) { canvas.style.display = "none"; hide("volume-empty"); return; }
+
+    new Chart(canvas, {
+      type: "bar",
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            label: "Anomaly (METRIC_SPIKE)",
+            data: data.metric_spike,
+            backgroundColor: "rgba(247,147,26,0.7)",
+            borderRadius: 2,
+          },
+          {
+            label: "Compound (COMPOUND_SPIKE)",
+            data: data.compound_spike,
+            backgroundColor: "rgba(167,139,250,0.7)",
+            borderRadius: 2,
+          },
+          {
+            label: "Dismissed",
+            data: data.dismissed,
+            type: "line",
+            borderColor: "#22c55e",
+            backgroundColor: "rgba(34,197,94,0.1)",
+            tension: 0.3, pointRadius: 3, pointBackgroundColor: "#22c55e",
+            yAxisID: "y1",
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: "#9ca3af", font: { size: 10 }, boxWidth: 10, padding: 8 } } },
+        scales: {
+          x: { grid: GRID, ticks: TICKS },
+          y: {
+            position: "left", grid: GRID, ticks: INT_TICKS, beginAtZero: true,
+            title: { display: true, text: "Alerts", color: "#9ca3af", font: { size: 10 } },
+          },
+          y1: {
+            position: "right", grid: { display: false }, ticks: INT_TICKS, beginAtZero: true,
+            title: { display: true, text: "Dismissed", color: "#9ca3af", font: { size: 10 } },
+          },
+        },
+      },
+    });
+  }
+
+
+})();
+</script>
+
+{% endblock %}

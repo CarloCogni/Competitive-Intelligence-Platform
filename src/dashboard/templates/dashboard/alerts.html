@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Alerts — BlockStream BI{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav class="text-xs text-gray-500 mb-4">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white">Dashboard</a>
+  <span class="mx-2">/</span>
+  {% if show_dismissed %}
+  <a href="{% url 'dashboard:alerts' %}" class="hover:text-white">Alerts</a>
+  <span class="mx-2">/</span>
+  <span class="text-gray-300">Dismissed</span>
+  {% else %}
+  <span class="text-gray-300">Alerts</span>
+  {% endif %}
+</nav>
+
+<div class="flex items-center justify-between mb-3">
+  <h1 class="text-xl font-bold text-white">
+    {% if show_dismissed %}Dismissed Alerts{% else %}Alerts{% endif %}
+  </h1>
+  <div class="flex items-center gap-3 text-xs text-gray-500">
+    <span>{{ total_count }} total</span>
+    {% if not show_dismissed and unseen_alert_count %}
+    <span class="text-blue-400">{{ unseen_alert_count }} unseen</span>
+    {% endif %}
+    {% if high_count %}<span class="text-red-400">{{ high_count }} HIGH</span>{% endif %}
+    {% if medium_count %}<span class="text-orange-400">{{ medium_count }} MEDIUM</span>{% endif %}
+  </div>
+</div>
+
+<!-- Alpine.js filter wrapper -->
+<div x-data="alertFilters()" @htmx:after-swap.window="applyFilters()">
+
+  <!-- Toolbar — two rows -->
+  <div class="mb-4 pb-4 border-b border-gray-800 space-y-2">
+
+    <!-- Row 1: Type + Severity filters -->
+    <div class="flex flex-wrap items-center gap-3">
+
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-gray-600 shrink-0">Type</span>
+        <div class="flex gap-1 flex-wrap">
+          {% for type_val, type_label, type_active_bg in alert_types %}
+          <button @click="alertType='{{ type_val }}'; applyFilters()"
+                  :class="alertType === '{{ type_val }}'
+                    ? '{{ type_active_bg }} text-white'
+                    : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'"
+                  class="px-2.5 py-1 text-xs rounded transition-colors">
+            {{ type_label }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 pl-3 border-l border-gray-700">
+        <span class="text-xs text-gray-600 shrink-0">Severity</span>
+        <div class="flex gap-1">
+          {% for sev_val, sev_label, sev_color in severity_choices %}
+          <button @click="severity='{{ sev_val }}'; applyFilters()"
+                  :class="severity === '{{ sev_val }}'
+                    ? '{{ sev_color }} text-white'
+                    : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'"
+                  class="px-2.5 py-1 text-xs rounded transition-colors">
+            {{ sev_label }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Row 2: Entity dropdown + actions -->
+    <div class="flex flex-wrap items-center gap-2">
+
+      {% if alert_entities %}
+      <select x-model="entity" @change="applyFilters()"
+              class="bg-gray-900 border border-gray-700 text-gray-300 text-xs rounded px-2 py-1
+                     focus:outline-none focus:border-gray-500">
+        <option value="all">All entities</option>
+        {% for slug, name in alert_entities %}
+        <option value="{{ slug }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
+
+      {% if alert_verticals %}
+      <select x-model="vertical" @change="applyFilters()"
+              class="bg-gray-900 border border-gray-700 text-gray-300 text-xs rounded px-2 py-1
+                     focus:outline-none focus:border-gray-500">
+        <option value="all">All verticals</option>
+        {% for slug, name in alert_verticals %}
+        <option value="{{ slug }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
+
+      <div class="flex-1"></div>
+
+      {% if not show_dismissed %}
+      <!-- Active-only actions -->
+      <div id="mark-all-container" class="flex gap-2">
+        <button class="px-3 py-1.5 text-xs rounded bg-emerald-900/30 border border-emerald-800
+                       text-emerald-400 hover:bg-emerald-900 transition-colors"
+                title="Dismiss all and mark as useful — positive GA signal"
+                hx-post="{% url 'dashboard:mark_all_alerts_seen' %}"
+                hx-vals='{"useful": "true"}'
+                hx-target="#mark-all-container"
+                hx-swap="outerHTML">
+          Mark all Relevant
+        </button>
+        <button class="px-3 py-1.5 text-xs rounded bg-amber-900/30 border border-amber-800
+                       text-amber-400 hover:bg-amber-900 transition-colors"
+                title="Dismiss all and mark as noise — negative GA signal"
+                hx-post="{% url 'dashboard:mark_all_alerts_seen' %}"
+                hx-vals='{"useful": "false"}'
+                hx-target="#mark-all-container"
+                hx-swap="outerHTML">
+          Mark all Noise
+        </button>
+      </div>
+
+      <a href="?dismissed=1"
+         class="px-3 py-1.5 text-xs rounded bg-gray-900 border border-gray-700
+                text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors">
+        Show Dismissed
+      </a>
+      {% else %}
+      <!-- Dismissed view: back link -->
+      <a href="{% url 'dashboard:alerts' %}"
+         class="px-3 py-1.5 text-xs rounded bg-gray-900 border border-gray-700
+                text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors">
+        ← Back to Active
+      </a>
+      {% endif %}
+
+      <a href="{% url 'dashboard:candidate_list' %}"
+         class="px-3 py-1.5 text-xs rounded bg-gray-900 border border-gray-700
+                text-blue-400 hover:border-blue-600 hover:text-blue-300 transition-colors">
+        Competitor Candidates
+      </a>
+
+    </div>
+  </div>
+
+  <!-- Alert cards -->
+  {% if show_dismissed %}
+  <!-- Dismissed mode: annotated cards with retriage controls, no HTMX poll -->
+  {% if alerts %}
+  <div class="space-y-2">
+    {% for alert in alerts %}
+      {% include "partials/alert_card_single.html" with alert=alert %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-gray-600 text-sm py-12 text-center">No dismissed alerts.</p>
+  {% endif %}
+
+  {% else %}
+  <!-- Active mode: unseen cards, HTMX polls every 30s -->
+  <div id="alerts-container"
+       hx-get="{% url 'dashboard:partial_alerts' %}"
+       hx-trigger="every 30s"
+       hx-swap="innerHTML">
+    {% include "partials/alert_card.html" with alerts=alerts %}
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function alertFilters() {
+  return {
+    alertType: 'all',
+    entity: '{{ initial_entity }}',
+    severity: 'all',
+    vertical: 'all',
+    init() {
+      this.applyFilters();
+    },
+    applyFilters() {
+      document.querySelectorAll('.alert-card').forEach(card => {
+        const typeOk = this.alertType === 'all' || card.dataset.alertType === this.alertType;
+        const entOk  = this.entity    === 'all' || card.dataset.entity    === this.entity;
+        const sevOk  = this.severity  === 'all' || card.dataset.severity  === this.severity;
+        const vertOk = this.vertical  === 'all' || card.dataset.vertical  === this.vertical;
+        card.style.display = (typeOk && entOk && sevOk && vertOk) ? '' : 'none';
+      });
+    }
+  }
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-950">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}BlockStream BI{% endblock %}</title>
+
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#f7931a', 600: '#e07d0e' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  {% block extra_head %}{% endblock %}
+
+  <style>
+    /* Chart fullscreen overlay */
+    .chart-card-fullscreen {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 40 !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      padding: 2rem !important;
+      padding-top: 3.5rem !important;
+      background: #030712 !important;
+      overflow: auto;
+    }
+    .chart-card-fullscreen canvas {
+      max-height: calc(100vh - 120px) !important;
+    }
+    /* Keep toolbar always visible in fullscreen */
+    .chart-card-fullscreen > .opacity-0 {
+      opacity: 1 !important;
+    }
+  </style>
+</head>
+
+<body class="h-full text-gray-100 font-mono" hx-boost="false"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+  {% include 'partials/navbar.html' %}
+
+  <!-- Main content -->
+  <main class="p-6">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="mb-4 px-4 py-2 text-sm rounded border
+                    {% if message.tags == 'success' %}text-green-400 bg-green-900/30 border-green-700
+                    {% elif message.tags == 'error' %}text-red-400 bg-red-900/30 border-red-700
+                    {% else %}text-gray-300 bg-gray-800 border-gray-700{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- -----------------------------------------------------------------------
+       Global help modal — opened by dispatching 'open-help' from any chart:
+       $dispatch('open-help', { title: '...', body: '<p>...</p>' })
+  ----------------------------------------------------------------------- -->
+  <div x-data="helpModal()" @open-help.window="open($event.detail)">
+
+    <!-- Backdrop + panel — only rendered when visible -->
+    <div x-show="visible"
+         x-cloak
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-100"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         @keydown.escape.window="close()">
+
+      <!-- Dimmed backdrop — click to close -->
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="close()"></div>
+
+      <!-- Modal panel -->
+      <div class="relative z-10 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]"
+           @click.stop
+           x-transition:enter="transition ease-out duration-150"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800 flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <span class="text-brand-500 text-base">◈</span>
+            <h3 class="text-sm font-semibold text-white tracking-wide" x-text="title"></h3>
+          </div>
+          <button @click="close()"
+                  class="text-gray-500 hover:text-white transition-colors text-lg leading-none">✕</button>
+        </div>
+
+        <!-- Body — HTML content injected from the dispatching chart -->
+        <div class="px-5 py-4 text-sm text-gray-300 leading-relaxed overflow-y-auto flex-1" x-html="body"></div>
+
+        <!-- Footer -->
+        <div class="px-5 py-3 border-t border-gray-800 flex justify-end flex-shrink-0">
+          <button @click="close()"
+                  class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded transition-colors">
+            Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ChartToolbar: export PNG + fullscreen for any Chart.js canvas -->
+  <script>
+  const ChartToolbar = {
+    /**
+     * Find the chart title from the card's heading element (h2/h3).
+     */
+    _getTitle(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return '';
+      const card = canvas.closest('.group');
+      if (!card) return '';
+      const heading = card.querySelector('h2, h3');
+      return heading ? heading.textContent.trim() : '';
+    },
+
+    export(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+
+      const title = this._getTitle(canvasId);
+      const titleHeight = title ? 40 : 0;
+
+      // Composite: dark background + title + chart pixels → new canvas
+      const tmp = document.createElement('canvas');
+      tmp.width  = canvas.width;
+      tmp.height = canvas.height + titleHeight;
+      const ctx = tmp.getContext('2d');
+      ctx.fillStyle = '#111827'; // gray-900
+      ctx.fillRect(0, 0, tmp.width, tmp.height);
+
+      // Draw title text above the chart
+      if (title) {
+        ctx.fillStyle = '#e5e7eb'; // gray-200
+        ctx.font = 'bold 14px ui-monospace, monospace';
+        ctx.fillText(title, 16, 26);
+      }
+
+      ctx.drawImage(canvas, 0, titleHeight);
+
+      const link = document.createElement('a');
+      link.download = (filename || canvasId) + '.png';
+      link.href = tmp.toDataURL('image/png');
+      link.click();
+    },
+
+    /**
+     * Toggle fullscreen on the chart card that contains the clicked button.
+     * Walks up the DOM to find the nearest .relative.group card, then
+     * expands it to fill the viewport. Dispatches a resize event so
+     * Chart.js recalculates its dimensions.
+     * @param {HTMLElement} btn - the fullscreen button element
+     */
+    fullscreen(btn) {
+      // Walk up to find the chart card (has 'group' class)
+      let card = btn.closest('.group');
+      if (!card) return;
+
+      const isFullscreen = card.classList.contains('chart-card-fullscreen');
+      const expandIcon   = btn.querySelector('.chart-toolbar-expand');
+      const compressIcon = btn.querySelector('.chart-toolbar-compress');
+
+      if (isFullscreen) {
+        // Remove fullscreen title bar
+        const bar = card.querySelector('.chart-fs-bar');
+        if (bar) bar.remove();
+
+        card.classList.remove('chart-card-fullscreen');
+        card.style.cssText = card._savedStyle || '';
+        document.body.style.overflow = '';
+        if (expandIcon)   expandIcon.classList.remove('hidden');
+        if (compressIcon) compressIcon.classList.add('hidden');
+        btn.title = 'Fullscreen';
+      } else {
+        card._savedStyle = card.style.cssText;
+        card.classList.add('chart-card-fullscreen');
+        document.body.style.overflow = 'hidden';
+        if (expandIcon)   expandIcon.classList.add('hidden');
+        if (compressIcon) compressIcon.classList.remove('hidden');
+        btn.title = 'Exit fullscreen';
+
+        // Inject a title bar with the chart title and a close button
+        const heading = card.querySelector('h2, h3');
+        const title = heading ? heading.textContent.trim() : '';
+        const bar = document.createElement('div');
+        bar.className = 'chart-fs-bar fixed top-0 left-0 right-0 flex items-center justify-between px-6 py-3 z-50 bg-gray-950/90 border-b border-gray-800 backdrop-blur-sm';
+        bar.innerHTML = '<span class="text-sm font-semibold text-gray-200 tracking-wide">' +
+          title.replace(/</g, '&lt;') +
+          '</span>' +
+          '<button onclick="ChartToolbar._exitFullscreen(this)" ' +
+          'class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors text-xs">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">' +
+          '<path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>' +
+          '</svg>Exit fullscreen</button>';
+        card.insertBefore(bar, card.firstChild);
+      }
+
+      // Let Chart.js recalculate canvas dimensions
+      window.dispatchEvent(new Event('resize'));
+    },
+
+    /** Exit fullscreen from the injected title bar close button */
+    _exitFullscreen(closeBtn) {
+      const card = closeBtn.closest('.chart-card-fullscreen');
+      if (!card) return;
+      // Find the original fullscreen toggle button in the toolbar
+      const btn = card.querySelector('.chart-toolbar-compress')?.closest('button');
+      if (btn) ChartToolbar.fullscreen(btn);
+    }
+  };
+
+  // Close fullscreen on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const card = document.querySelector('.chart-card-fullscreen');
+    if (!card) return;
+    const btn = card.querySelector('.chart-toolbar-compress')?.closest('button');
+    if (btn) ChartToolbar.fullscreen(btn);
+  });
+  </script>
+
+  <script>
+  function helpModal() {
+    return {
+      visible: false,
+      title: '',
+      body: '',
+      open(detail) {
+        this.title = detail.title;
+        this.body  = detail.body;
+        this.visible = true;
+      },
+      close() { this.visible = false; }
+    };
+  }
+  </script>
+
+</body>
+</html>

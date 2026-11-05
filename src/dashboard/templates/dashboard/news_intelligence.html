@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+{% block title %}News Intelligence — BlockStream BI{% endblock %}
+
+{% block extra_head %}
+<!-- Plotly.js — heatmap chart -->
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav class="text-xs text-gray-500 mb-4">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white">Dashboard</a>
+  <span class="mx-2">/</span>
+  <span class="text-gray-300">News Intelligence</span>
+</nav>
+
+<div x-data="newsFilters()">
+
+  <!-- Page header -->
+  <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center gap-2">
+      <h1 class="text-xl font-bold text-white">News Intelligence</h1>
+      <button @click="$dispatch('open-help', {
+                title: 'News Intelligence',
+                body: '<p>LLM-enriched news articles with sentiment classification, signal type detection, and strategic summaries.</p><ul class=\'list-disc list-inside mt-2 space-y-1\'><li><strong>Sentiment</strong> — how the article frames the entity (positive/neutral/negative/mixed)</li><li><strong>Signal type</strong> — what kind of event the article covers</li><li><strong>Summary</strong> — 1-2 sentence strategic summary by the LLM</li><li><strong>Key quote</strong> — most relevant sentence from the article</li><li><strong>Heatmap</strong> — average sentiment per entity per week</li></ul><p class=\'mt-2 text-gray-400\'>Enrichment runs automatically when Ollama is available. Articles without enrichment data are not shown here.</p>'
+              })"
+              class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold
+                     bg-amber-400/20 text-amber-400 border border-amber-400/40
+                     hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+              title="What is this?">?</button>
+    </div>
+    <div class="text-xs text-gray-500">
+      {{ news_items|length }} enriched articles
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="mb-4 pb-4 border-b border-gray-800 space-y-2">
+
+    <!-- Row 1: Sentiment + Signal filters -->
+    <div class="flex flex-wrap items-center gap-3">
+
+      <!-- Sentiment tabs -->
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-gray-600 shrink-0">Sentiment</span>
+        <div class="flex gap-1 flex-wrap">
+          <button @click="sentiment='all'; applyFilters()"
+                  :class="sentiment === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'"
+                  class="px-2.5 py-1 text-xs rounded transition-colors">All</button>
+          <button @click="sentiment='positive'; applyFilters()"
+                  :class="sentiment === 'positive' ? 'bg-green-700 text-white' : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'"
+                  class="px-2.5 py-1 text-xs rounded transition-colors">Positive</button>
+          <button @click="sentiment='neutral'; applyFilters()"
+                  :class="sentiment === 'neutral' ? 'bg-gray-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'"
+                  class="px-2.5 py-1 text-xs rounded transition-colors">Neutral</button>
+          <button @click="sentiment='negative'; applyFilters()"
+                  :class="sentiment === 'negative' ? 'bg-red-700 text-white' : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'"
+                  class="px-2.5 py-1 text-xs rounded transition-colors">Negative</button>
+          <button @click="sentiment='mixed'; applyFilters()"
+                  :class="sentiment === 'mixed' ? 'bg-yellow-700 text-white' : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'"
+                  class="px-2.5 py-1 text-xs rounded transition-colors">Mixed</button>
+        </div>
+      </div>
+
+      <!-- Signal type pills -->
+      <div class="flex items-center gap-1.5 pl-3 border-l border-gray-700">
+        <span class="text-xs text-gray-600 shrink-0">Signal</span>
+        <div class="flex gap-1 flex-wrap">
+          <button @click="signal='all'; applyFilters()"
+                  :class="signal === 'all' ? 'bg-gray-700 text-white' : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'"
+                  class="px-2.5 py-1 text-xs rounded transition-colors">All</button>
+          {% for sig_val, sig_label in signal_type_labels.items %}
+          <button @click="signal='{{ sig_val }}'; applyFilters()"
+                  :class="signal === '{{ sig_val }}' ? 'bg-blue-700 text-white' : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'"
+                  class="px-2.5 py-1 text-xs rounded transition-colors">{{ sig_label }}</button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Entity dropdown + Time range -->
+    <div class="flex flex-wrap items-center gap-2">
+      {% if entities %}
+      <select x-model="entity" @change="applyFilters()"
+              class="bg-gray-900 border border-gray-700 text-gray-300 text-xs rounded px-2 py-1
+                     focus:outline-none focus:border-gray-500">
+        <option value="all">All entities</option>
+        {% for e in entities %}
+        <option value="{{ e.slug }}">{{ e.name }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
+
+      <!-- Time range (server-side reload) -->
+      <div class="flex items-center gap-1 pl-3 border-l border-gray-700">
+        <span class="text-xs text-gray-600 shrink-0">Period</span>
+        <a href="?days=7{% if current_sentiment %}&sentiment={{ current_sentiment }}{% endif %}{% if current_signal %}&signal={{ current_signal }}{% endif %}{% if current_entity %}&entity={{ current_entity }}{% endif %}"
+           class="px-2 py-1 text-xs rounded transition-colors {% if current_days == 7 %}bg-gray-700 text-white{% else %}bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800{% endif %}">7d</a>
+        <a href="?days=30{% if current_sentiment %}&sentiment={{ current_sentiment }}{% endif %}{% if current_signal %}&signal={{ current_signal }}{% endif %}{% if current_entity %}&entity={{ current_entity }}{% endif %}"
+           class="px-2 py-1 text-xs rounded transition-colors {% if current_days == 30 %}bg-gray-700 text-white{% else %}bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800{% endif %}">30d</a>
+        <a href="?days=90{% if current_sentiment %}&sentiment={{ current_sentiment }}{% endif %}{% if current_signal %}&signal={{ current_signal }}{% endif %}{% if current_entity %}&entity={{ current_entity }}{% endif %}"
+           class="px-2 py-1 text-xs rounded transition-colors {% if current_days == 90 %}bg-gray-700 text-white{% else %}bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800{% endif %}">90d</a>
+      </div>
+
+      <!-- Search -->
+      <div class="pl-3 border-l border-gray-700">
+        <input type="text" x-model="q" @input="applyFilters()"
+               placeholder="Search titles..."
+               class="bg-gray-900 border border-gray-700 text-gray-300 text-xs rounded px-2 py-1 w-48
+                      focus:outline-none focus:border-gray-500 placeholder-gray-600">
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Takeaways section -->
+  <div class="mb-6 bg-gray-900/50 border border-gray-800 rounded-lg p-4">
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-2">
+        <h2 class="text-sm font-semibold text-white">Key Takeaways</h2>
+        <button @click="$dispatch('open-help', {
+                  title: 'Key Takeaways',
+                  body: '<p>On-demand LLM-generated summary of the most significant developments from recent news. Uses pre-enriched article summaries for fast generation.</p><p class=\'mt-2 text-gray-400\'>Requires Ollama to be running locally.</p>'
+                })"
+                class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold
+                       bg-amber-400/20 text-amber-400 border border-amber-400/40
+                       hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                title="What is this?">?</button>
+      </div>
+      <button hx-post="{% url 'dashboard:news_key_takeaways' %}"
+              hx-target="#takeaways-content"
+              hx-swap="innerHTML"
+              hx-indicator="#takeaways-spinner"
+              hx-vals='{"days": "{{ current_days }}"}'
+              class="px-3 py-1 text-xs bg-brand-500 text-black font-medium rounded hover:bg-brand-600 transition-colors">
+        Generate
+      </button>
+    </div>
+    <div id="takeaways-content" class="text-sm text-gray-400">
+      <p>Click "Generate" to produce an executive summary of recent news.</p>
+    </div>
+    <div id="takeaways-spinner" class="htmx-indicator text-xs text-gray-500 mt-2">
+      Generating takeaways...
+    </div>
+  </div>
+
+  <!-- Two-column layout: Cards + Heatmap -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- LEFT: Article cards (2/3 width) -->
+    <div class="lg:col-span-2">
+      <div id="news-cards-container" class="space-y-3 max-h-[80vh] overflow-y-auto pr-2">
+        {% for item in news_items %}
+        <div class="news-card bg-gray-900/50 rounded-lg border
+                    {% if item.sentiment == 'positive' %}border-gray-700/60 border-l-4 border-l-green-500
+                    {% elif item.sentiment == 'negative' %}border-gray-700/60 border-l-4 border-l-red-500
+                    {% elif item.sentiment == 'mixed' %}border-gray-700/60 border-l-4 border-l-yellow-500
+                    {% else %}border-gray-700/60 border-l-4 border-l-gray-500{% endif %}
+                    hover:border-gray-600 transition-colors p-3"
+             data-sentiment="{{ item.sentiment }}"
+             data-signal="{{ item.signal_type }}"
+             data-entity="{% for e in item.entities.all %}{{ e.slug }} {% endfor %}"
+             data-title="{{ item.title|lower }}"
+             x-data="{ expanded: false }">
+
+          <!-- Row 1: Badges -->
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <!-- Sentiment badge -->
+            {% if item.sentiment == 'positive' %}
+            <span class="px-2 py-0.5 text-xs rounded bg-green-900/60 text-green-300">positive</span>
+            {% elif item.sentiment == 'negative' %}
+            <span class="px-2 py-0.5 text-xs rounded bg-red-900/60 text-red-300">negative</span>
+            {% elif item.sentiment == 'mixed' %}
+            <span class="px-2 py-0.5 text-xs rounded bg-yellow-900/60 text-yellow-300">mixed</span>
+            {% else %}
+            <span class="px-2 py-0.5 text-xs rounded bg-gray-700/60 text-gray-300">neutral</span>
+            {% endif %}
+
+            <!-- Signal type badge -->
+            {% if item.signal_type %}
+            <span class="px-2 py-0.5 text-xs rounded bg-blue-900/60 text-blue-300">{{ item.signal_type_label }}</span>
+            {% endif %}
+
+            <!-- Entity names -->
+            {% for e in item.entities.all %}
+            <a href="{% url 'dashboard:entity_detail' e.slug %}"
+               class="text-xs {% if item.sentiment == 'positive' %}text-green-400 hover:text-green-300{% elif item.sentiment == 'negative' %}text-red-400 hover:text-red-300{% elif item.sentiment == 'mixed' %}text-yellow-400 hover:text-yellow-300{% else %}text-gray-400 hover:text-gray-300{% endif %} transition-colors">
+              {{ e.name }}{% if not forloop.last %},{% endif %}
+            </a>
+            {% endfor %}
+          </div>
+
+          <!-- Row 2: Title -->
+          <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer"
+             class="text-sm text-white hover:text-brand-500 transition-colors line-clamp-2 block mb-1">
+            {{ item.title }}
+          </a>
+
+          <!-- Row 3: Source + date + expand toggle -->
+          <div class="flex items-center justify-between text-xs text-gray-500">
+            <div>
+              {% if item.source_name %}{{ item.source_name }} · {% endif %}
+              {% if item.published_at %}{{ item.published_at|timesince }} ago{% endif %}
+            </div>
+            {% if item.llm_summary or item.key_quote %}
+            <button @click="expanded = !expanded"
+                    class="text-gray-500 hover:text-gray-300 transition-colors"
+                    x-text="expanded ? '▲ Hide' : '▼ Details'"></button>
+            {% endif %}
+          </div>
+
+          <!-- Expandable: Summary + Key Quote -->
+          <div x-show="expanded" x-transition class="mt-2 pt-2 border-t border-gray-800">
+            {% if item.llm_summary %}
+            <p class="text-sm text-gray-300 mb-2">{{ item.llm_summary }}</p>
+            {% endif %}
+            {% if item.key_quote %}
+            <blockquote class="text-xs text-gray-400 italic border-l-2 border-gray-700 pl-3">
+              "{{ item.key_quote }}"
+            </blockquote>
+            {% endif %}
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-12 text-gray-500">
+          <p class="text-sm">No enriched articles found for this period.</p>
+          <p class="text-xs mt-1">Articles are enriched automatically when Ollama is running.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- RIGHT: Sentiment Heatmap + Breakdown (1/3 width) -->
+    <div>
+      <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <h2 class="text-sm font-semibold text-white">Sentiment Heatmap</h2>
+          <button @click="$dispatch('open-help', {
+                    title: 'Sentiment Heatmap',
+                    body: '<p>Average sentiment per entity per week. Green = positive coverage, red = negative, gray = neutral or no data.</p><p class=\'mt-2 text-gray-400\'>Only the top 15 entities by article volume are shown.</p>'
+                  })"
+                  class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold
+                         bg-amber-400/20 text-amber-400 border border-amber-400/40
+                         hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                  title="What is this?">?</button>
+        </div>
+        <!-- Plotly heatmap container -->
+        <div id="sentiment-heatmap" style="width:100%;height:400px"></div>
+      </div>
+
+      <!-- Sentiment breakdown — fully server-rendered -->
+      <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-4 mt-4">
+        <h2 class="text-sm font-semibold text-white mb-3">Breakdown</h2>
+        <div class="space-y-3">
+          {% for item in breakdown %}
+          <div>
+            <div class="flex justify-between mb-1 text-xs">
+              <span style="color: {{ item.text_color }}">{{ item.label }}</span>
+              <span class="text-gray-500">{{ item.count }} ({{ item.pct }}%)</span>
+            </div>
+            <div class="w-full rounded-full h-1.5" style="background: #1f2937">
+              <div class="h-1.5 rounded-full" style="background: {{ item.color }}; width: {{ item.pct }}%"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Alpine.js filter component
+function newsFilters() {
+  return {
+    sentiment: 'all',
+    signal: 'all',
+    entity: 'all',
+    q: '',
+    applyFilters() {
+      const cards = document.querySelectorAll('#news-cards-container .news-card');
+      cards.forEach(card => {
+        const sentOk  = this.sentiment === 'all' || card.dataset.sentiment === this.sentiment;
+        const sigOk   = this.signal === 'all'    || card.dataset.signal === this.signal;
+        const entOk   = this.entity === 'all'    || (card.dataset.entity || '').includes(this.entity);
+        const qOk     = !this.q                  || (card.dataset.title || '').includes(this.q.toLowerCase());
+        card.style.display = (sentOk && sigOk && entOk && qOk) ? '' : 'none';
+      });
+    }
+  };
+}
+
+// Plotly heatmap
+document.addEventListener('DOMContentLoaded', function () {
+  const raw = {{ heatmap_json|safe }};
+  const div = document.getElementById('sentiment-heatmap');
+  if (!raw.entities.length) {
+    div.innerHTML = '<p style="color:#6b7280;font-size:0.75rem">No sentiment data available for this period.</p>';
+    return;
+  }
+
+  // Plotly heatmap expects z[row][col] with y-axis as rows (bottom-up),
+  // so reverse entities and cells so first entity appears at the top.
+  const entities = raw.entities.slice().reverse();
+  const cells    = raw.cells.slice().reverse();
+
+  // Custom hover text
+  const hovertext = cells.map((row, i) =>
+    row.map((val, j) =>
+      val !== null
+        ? `${entities[i]}<br>${raw.weeks[j]}<br>Score: ${val}`
+        : `${entities[i]}<br>${raw.weeks[j]}<br>No data`
+    )
+  );
+
+  const trace = {
+    z: cells,
+    x: raw.weeks,
+    y: entities,
+    type: 'heatmap',
+    colorscale: [
+      [0,   '#ef4444'],  // red-500   (score -1)
+      [0.25,'#b91c1c'],  // red-700   (score -0.5)
+      [0.5, '#4b5563'],  // gray-600  (score  0)
+      [0.75,'#15803d'],  // green-700 (score +0.5)
+      [1,   '#22c55e'],  // green-500 (score +1)
+    ],
+    zmin: -1,
+    zmax: 1,
+    hoverinfo: 'text',
+    hovertext: hovertext,
+    xgap: 2,
+    ygap: 2,
+    showscale: true,
+    colorbar: {
+      title: { text: 'Sentiment', font: { color: '#9ca3af', size: 10 } },
+      tickvals: [-1, 0, 1],
+      ticktext: ['Negative', 'Neutral', 'Positive'],
+      tickfont: { color: '#6b7280', size: 9 },
+      len: 0.8,
+      thickness: 12,
+      outlinewidth: 0,
+    },
+    connectgaps: false,
+  };
+
+  const layout = {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    margin: { l: 130, r: 60, t: 10, b: 40 },
+    xaxis: {
+      color: '#6b7280',
+      tickfont: { size: 10, color: '#6b7280' },
+      side: 'bottom',
+    },
+    yaxis: {
+      color: '#9ca3af',
+      tickfont: { size: 10, color: '#9ca3af' },
+      automargin: true,
+    },
+    font: { family: 'ui-monospace, monospace' },
+  };
+
+  Plotly.newPlot(div, [trace], layout, { displayModeBar: false, responsive: true });
+});
+</script>
+
+{% endblock %}

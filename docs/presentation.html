@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Competitive Intelligence Dashboard</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange:  #f97316;
+      --dark:    #0f172a;
+      --mid:     #1e293b;
+      --card:    #273548;
+      --border:  #334155;
+      --text:    #e2e8f0;
+      --muted:   #94a3b8;
+      --accent:  #38bdf8;
+      --green:   #4ade80;
+      --yellow:  #fbbf24;
+      --red:     #f87171;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--dark);
+      color: var(--text);
+    }
+
+    /* ── Print: one slide per page ── */
+    @media print {
+      .slide { page-break-after: always; height: 100vh; }
+      .slide:last-child { page-break-after: avoid; }
+    }
+
+    /* ── Slide shell ── */
+    .slide {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 64px 80px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* slide number */
+    .slide-num {
+      position: absolute;
+      top: 28px;
+      right: 40px;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    /* ── Typography ── */
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+
+    h1 { font-size: 52px; font-weight: 700; line-height: 1.1; margin-bottom: 18px; }
+    h2 { font-size: 38px; font-weight: 700; line-height: 1.15; margin-bottom: 12px; }
+    h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+
+    .subtitle {
+      font-size: 20px;
+      color: var(--muted);
+      max-width: 640px;
+      line-height: 1.6;
+    }
+
+    .section-desc {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    /* ── Shared layout ── */
+    .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 36px; }
+    .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-top: 36px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(249,115,22,.15);
+      color: var(--orange);
+      font-weight: 600;
+      margin-right: 6px;
+      margin-bottom: 6px;
+      letter-spacing: .04em;
+    }
+    .tag.blue   { background: rgba(56,189,248,.12); color: var(--accent); }
+    .tag.green  { background: rgba(74,222,128,.12); color: var(--green); }
+    .tag.yellow { background: rgba(251,191,36,.12); color: var(--yellow); }
+    .tag.red    { background: rgba(248,113,113,.12); color: var(--red); }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: var(--mid);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      margin-bottom: 8px;
+      margin-right: 6px;
+    }
+    .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+
+    ul.clean { list-style: none; }
+    ul.clean li { padding: 5px 0; font-size: 14px; color: var(--muted); }
+    ul.clean li::before { content: "→ "; color: var(--orange); }
+
+    .divider { width: 48px; height: 3px; background: var(--orange); border-radius: 2px; margin: 20px 0; }
+
+    /* ── Slide 1 ── */
+    .s1-brand { font-size: 13px; color: var(--muted); margin-top: 48px; }
+    .s1-brand strong { color: var(--orange); }
+
+    /* ── Slide 2 — Architecture ── */
+    .arch-flow {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin-top: 36px;
+    }
+    .arch-layer {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 20px;
+      position: relative;
+    }
+    .arch-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      color: var(--orange);
+      font-size: 22px;
+    }
+    .layer-num {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .layer-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--text); }
+    .stack-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 20px;
+    }
+
+    /* ── Slide 3 — Demo ── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 32px;
+    }
+    .feature-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .feature-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+      line-height: 1;
+      margin-top: 2px;
+    }
+    .feature-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .feature-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* ── Slide 4 — Built vs Later ── */
+    .status-table { width: 100%; border-collapse: collapse; margin-top: 28px; font-size: 13px; }
+    .status-table th {
+      text-align: left;
+      font-size: 10px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .status-table td { padding: 10px 14px; border-bottom: 1px solid rgba(51,65,85,.5); vertical-align: top; }
+    .status-table tr:last-child td { border-bottom: none; }
+    .pill {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 2px 9px;
+      border-radius: 4px;
+    }
+    .pill.done    { background: rgba(74,222,128,.15); color: var(--green); }
+    .pill.later   { background: rgba(251,191,36,.12); color: var(--yellow); }
+    .pill.bonus   { background: rgba(249,115,22,.18); color: var(--orange); font-weight: 800; }
+
+    /* ── AI spotlight (slide 2 & 3) ── */
+    .ai-banner {
+      margin-top: 24px;
+      background: linear-gradient(135deg, rgba(249,115,22,.12) 0%, rgba(56,189,248,.08) 100%);
+      border: 1px solid rgba(249,115,22,.4);
+      border-radius: 14px;
+      padding: 22px 28px;
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .ai-banner-label {
+      font-size: 10px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--orange);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .ai-banner-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .ai-banner-body  { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .ai-pill {
+      display: inline-block;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(249,115,22,.2);
+      color: var(--orange);
+      font-weight: 600;
+      margin-right: 6px;
+      margin-top: 6px;
+    }
+
+    .ai-feature-full {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, rgba(249,115,22,.10) 0%, rgba(56,189,248,.06) 100%);
+      border: 1px solid rgba(249,115,22,.35);
+      border-radius: 12px;
+      padding: 24px 28px;
+    }
+    .ai-feature-full .feature-label { font-size: 15px; color: var(--orange); }
+    .ai-feature-full .ai-modules {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .ai-module {
+      background: rgba(15,23,42,.5);
+      border: 1px solid rgba(249,115,22,.2);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .ai-module-name  { font-size: 12px; font-weight: 700; margin-bottom: 5px; color: var(--text); }
+    .ai-module-desc  { font-size: 11px; color: var(--muted); line-height: 1.5; }
+    .ai-module-tech  { font-size: 10px; color: var(--orange); font-weight: 600; margin-top: 8px; }
+
+    /* ── Slide 5 — Next Steps ── */
+    .next-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      position: relative;
+    }
+    .next-num {
+      font-size: 48px;
+      font-weight: 800;
+      color: rgba(249,115,22,.18);
+      position: absolute;
+      top: 16px;
+      right: 24px;
+      line-height: 1;
+    }
+    .next-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .next-body  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .next-effort {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--orange);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 1 — Problem Statement
+══════════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-num">1 / 5</span>
+
+  <div class="eyebrow">Open Source · AGPL-3.0</div>
+  <h1>Competitive<br>Intelligence<br>Dashboard</h1>
+  <div class="divider"></div>
+  <p class="subtitle">
+    Blockstream operates across seven product verticals and competes with over 30 organisations. Today, tracking competitors means checking GitHub, news, and app stores manually — once a week, if at all.
+  </p>
+
+  <div class="cols-2" style="margin-top: 40px;">
+    <div class="card">
+      <h3>The Problem</h3>
+      <ul class="clean" style="margin-top: 10px;">
+        <li>Competitor activity is scattered across GitHub, news, and app stores</li>
+        <li>Manual monitoring doesn't scale to 30+ entities across 7 verticals</li>
+        <li>Signals are noticed days late — or not at all</li>
+        <li>No shared view of what changed and why it matters</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>The Goal</h3>
+      <ul class="clean" style="margin-top: 10px;">
+        <li>Aggregate public signals automatically, on a schedule</li>
+        <li>Alert when a metric moves beyond a meaningful threshold</li>
+        <li>Surface new competitor candidates from news</li>
+        <li>Deliver a weekly intelligence briefing via AI</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="s1-brand" style="margin-top: 40px;">
+    Built by <strong>Carlo Cogni</strong>
+  </p>
+</section>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 2 — Architecture Overview
+══════════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-num">2 / 5</span>
+
+  <div class="eyebrow">System Design</div>
+  <h2>Three-Layer Architecture</h2>
+  <p class="section-desc">One codebase · one process · one database. No microservices, no message broker.</p>
+
+  <div class="arch-flow">
+    <div class="arch-layer">
+      <div class="layer-num">Layer 1</div>
+      <div class="layer-title">Data Ingestion</div>
+      <ul class="clean">
+        <li>GitHub API</li>
+        <li>Google News RSS</li>
+        <li>App Store API (iOS)</li>
+        <li>Google Play (scraper)</li>
+        <li>Twitter v2 API</li>
+        <li>Reddit public API</li>
+        <li>GitHub releases.atom</li>
+      </ul>
+      <div style="margin-top:14px;font-size:12px;color:var(--muted);">
+        7 fetchers · each independently testable · failures never crash the scheduler
+      </div>
+    </div>
+
+    <div class="arch-arrow">→</div>
+
+    <div class="arch-layer">
+      <div class="layer-num">Layer 2</div>
+      <div class="layer-title">Storage &amp; Detection</div>
+      <ul class="clean">
+        <li>SQLite (zero-setup, production schema)</li>
+        <li>MetricSnapshot (raw JSON) + flat Metric rows</li>
+        <li>Delta detection — static &amp; Isolation Forest</li>
+        <li>Compound rules via Genetic Algorithm</li>
+        <li>Competitor candidate extraction (LLM)</li>
+        <li>APScheduler — per-source configurable intervals</li>
+      </ul>
+    </div>
+
+    <div class="arch-arrow">→</div>
+
+    <div class="arch-layer">
+      <div class="layer-num">Layer 3</div>
+      <div class="layer-title">Dashboard</div>
+      <ul class="clean">
+        <li>Entity overview (sortable table)</li>
+        <li>Vertical drill-down with breadcrumbs</li>
+        <li>Head-to-head comparison + radar charts</li>
+        <li>Unified feed (News / Releases / Alerts)</li>
+        <li>Alert feed with HTMX live polling</li>
+        <li>AI Observatory &amp; weekly briefings</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stack-row" style="margin-top: 28px;">
+    <span class="tag">Django 6.x</span>
+    <span class="tag">SQLite</span>
+    <span class="tag">APScheduler</span>
+    <span class="tag blue">HTMX 1.9</span>
+    <span class="tag blue">Alpine.js 3</span>
+    <span class="tag blue">Tailwind CSS</span>
+    <span class="tag blue">Chart.js 4</span>
+    <span class="tag green">scikit-learn</span>
+    <span class="tag green">Ollama / Groq</span>
+    <span class="tag yellow">uv</span>
+    <span class="tag yellow">pytest + factory_boy</span>
+  </div>
+
+  <!-- AI layer — not required, but built -->
+  <div class="ai-banner">
+    <div style="flex:0 0 auto;">
+      <div class="ai-banner-label">⚡ Not in the brief — added anyway</div>
+      <div class="ai-banner-title">AI Intelligence Layer</div>
+    </div>
+    <div style="flex:1;min-width:280px;">
+      <div class="ai-banner-body">
+        Six interconnected AI systems sit on top of the three-layer pipeline, transforming raw signals into actionable intelligence — none of this was required by the assignment.
+      </div>
+      <div style="margin-top:8px;">
+        <span class="ai-pill">Isolation Forest anomaly detection</span>
+        <span class="ai-pill">Genetic Algorithm rule optimizer</span>
+        <span class="ai-pill">LLM competitor extraction</span>
+        <span class="ai-pill">News sentiment &amp; signal classification</span>
+        <span class="ai-pill">Ollama + Groq weekly briefings</span>
+        <span class="ai-pill">Momentum speed &amp; acceleration tracking</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 3 — Demo Results
+══════════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-num">3 / 5</span>
+
+  <div class="eyebrow">What It Does</div>
+  <h2>Demo Results</h2>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;margin-bottom:4px;">
+    <span class="badge"><span class="dot"></span>7 verticals live</span>
+    <span class="badge"><span class="dot"></span>31 tracked entities</span>
+    <span class="badge"><span class="dot"></span>7 data sources</span>
+    <span class="badge"><span class="dot"></span>Login: batman / the hero we deserve</span>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-item">
+      <div class="feature-icon">📊</div>
+      <div>
+        <div class="feature-label">Entity Overview</div>
+        <div class="feature-desc">Sortable table of all 31 entities across 7 verticals. Filter by vertical, search by name, toggle between watchlist and full scope.</div>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🔍</div>
+      <div>
+        <div class="feature-label">Entity Drill-Down</div>
+        <div class="feature-desc">Company → Product navigation with breadcrumbs. Sparkline charts (30d / 90d / All) for every metric with delta badges.</div>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">⚔️</div>
+      <div>
+        <div class="feature-label">Head-to-Head Comparison</div>
+        <div class="feature-desc">Select any two entities. Radar chart + side-by-side metrics + trend lines. Save comparisons to revisit later.</div>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">📰</div>
+      <div>
+        <div class="feature-label">Unified Feed</div>
+        <div class="feature-desc">Three-column layout: News articles · GitHub releases · Alerts. Filter by entity. Auto-refreshes via HTMX polling.</div>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🚨</div>
+      <div>
+        <div class="feature-label">Alert System</div>
+        <div class="feature-desc">Fires when a metric moves beyond a configurable threshold. Supports METRIC_SPIKE, NEW_RELEASE, NEW_REPO, COMPETITOR_NEW, and COMPOUND_SPIKE types.</div>
+      </div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🕸️</div>
+      <div>
+        <div class="feature-label">Competitive Landscape Map</div>
+        <div class="feature-desc">Force-directed graph of all 31 entities. Node size = composite score. Three edge types: news co-mentions, shared GitHub org, correlated metric trajectories. Click any node to drill down.</div>
+      </div>
+    </div>
+    <!-- AI: full-width, highlighted -->
+    <div class="ai-feature-full">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+        <span style="font-size:22px;">🤖</span>
+        <div>
+          <div class="feature-label" style="font-size:15px;color:var(--orange);">AI Intelligence Layer — beyond the assignment brief</div>
+          <div class="feature-desc" style="margin-top:2px;">Six AI systems that were not requested but were built anyway. They transform raw signals into actionable, self-improving intelligence.</div>
+        </div>
+      </div>
+      <div class="ai-modules">
+        <div class="ai-module">
+          <div class="ai-module-name">Smart Anomaly Detection</div>
+          <div class="ai-module-desc">Learns each entity's normal metric behaviour and alerts only on statistically unusual changes — not arbitrary fixed thresholds.</div>
+          <div class="ai-module-tech">Isolation Forest · scikit-learn</div>
+        </div>
+        <div class="ai-module">
+          <div class="ai-module-name">Compound Alert Rules</div>
+          <div class="ai-module-desc">Discovers multi-metric patterns that correlate with meaningful competitive events by evolving rules from user dismissal feedback.</div>
+          <div class="ai-module-tech">Genetic Algorithm · F-beta fitness</div>
+        </div>
+        <div class="ai-module">
+          <div class="ai-module-name">Competitor Detection</div>
+          <div class="ai-module-desc">Scans every news article for untracked entity mentions. LLM determines if a name is a genuine competitor. Fires alert after 3 mentions.</div>
+          <div class="ai-module-tech">LLM structured output · Ollama / Groq</div>
+        </div>
+        <div class="ai-module">
+          <div class="ai-module-name">News Intelligence</div>
+          <div class="ai-module-desc">Classifies every article by sentiment and strategic signal type. Generates summaries and key quotes. Plotly heatmap reveals media coverage patterns across entities and weeks.</div>
+          <div class="ai-module-tech">LLM enrichment · Ollama-only · Plotly.js</div>
+        </div>
+        <div class="ai-module">
+          <div class="ai-module-name">Weekly Intelligence Briefings</div>
+          <div class="ai-module-desc">Generates a narrative summary of the week's most important competitive signals — on-demand or on a schedule, with email delivery.</div>
+          <div class="ai-module-tech">Ollama (local) · Groq cloud fallback</div>
+        </div>
+        <div class="ai-module">
+          <div class="ai-module-name">Momentum Tracking</div>
+          <div class="ai-module-desc">Aggregates all metric velocities into a single speed score per entity. Tracks acceleration to spot rising stars and fading leaders.</div>
+          <div class="ai-module-tech">Z-score normalization · quadrant analysis</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 4 — What Works vs. What's Documented
+══════════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-num">4 / 5</span>
+
+  <div class="eyebrow">Implementation Status</div>
+  <h2>Built vs. Documented for Later</h2>
+
+  <table class="status-table">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Status</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Built -->
+      <tr>
+        <td><strong>7 data fetchers</strong> (GitHub, News, iOS, Android, Twitter, Reddit, Changelog)</td>
+        <td><span class="pill done">Built</span></td>
+        <td style="color:var(--muted)">All independently testable, mocked test suite, failures isolated</td>
+      </tr>
+      <tr>
+        <td><strong>Delta detection</strong> — static thresholds + Isolation Forest anomaly detection</td>
+        <td><span class="pill done">Built</span></td>
+        <td style="color:var(--muted)">Per-entity, per-metric models; cold-start LLM suggestions</td>
+      </tr>
+      <!-- AI section header row -->
+      <tr>
+        <td colspan="3" style="padding:14px 14px 6px;background:rgba(249,115,22,.06);border-left:3px solid var(--orange);">
+          <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--orange);">
+            ⚡ AI Layer — 5 systems, not requested, built anyway
+          </span>
+        </td>
+      </tr>
+      <tr style="background:rgba(249,115,22,.04);">
+        <td style="border-left:3px solid var(--orange);"><strong>Anomaly detection</strong> — Isolation Forest per (entity, metric)</td>
+        <td><span class="pill bonus">AI Bonus</span></td>
+        <td style="color:var(--muted)">Context-aware thresholds; cold-start LLM suggestions for new entities</td>
+      </tr>
+      <tr style="background:rgba(249,115,22,.04);">
+        <td style="border-left:3px solid var(--orange);"><strong>Compound alert rules</strong> via Genetic Algorithm optimizer</td>
+        <td><span class="pill bonus">AI Bonus</span></td>
+        <td style="color:var(--muted)">Evolves multi-metric rules from user dismissal feedback (AlertSeen labels)</td>
+      </tr>
+      <tr style="background:rgba(249,115,22,.04);">
+        <td style="border-left:3px solid var(--orange);"><strong>Competitor candidate detection</strong> — LLM entity extraction from news</td>
+        <td><span class="pill bonus">AI Bonus</span></td>
+        <td style="color:var(--muted)">Structured LLM output; promote/dismiss workflow; COMPETITOR_NEW alerts</td>
+      </tr>
+      <tr style="background:rgba(249,115,22,.04);">
+        <td style="border-left:3px solid var(--orange);"><strong>News Intelligence</strong> — LLM sentiment &amp; signal classification</td>
+        <td><span class="pill bonus">AI Bonus</span></td>
+        <td style="color:var(--muted)">Per-article sentiment, signal type, summary, key quote; Plotly heatmap; on-demand takeaways; Ollama-only mode</td>
+      </tr>
+      <tr style="background:rgba(249,115,22,.04);">
+        <td style="border-left:3px solid var(--orange);"><strong>Weekly intelligence briefings</strong> (Ollama local + Groq cloud fallback)</td>
+        <td><span class="pill bonus">AI Bonus</span></td>
+        <td style="color:var(--muted)">On-demand or scheduled; email delivery; provider toggle in UI</td>
+      </tr>
+      <tr style="background:rgba(249,115,22,.04);">
+        <td style="border-left:3px solid var(--orange);"><strong>Momentum tracking</strong> — speed &amp; acceleration per entity</td>
+        <td><span class="pill bonus">AI Bonus</span></td>
+        <td style="color:var(--muted)">Z-score composite; scatter quadrant map; filterable time-series; entity badge</td>
+      </tr>
+      <!-- separator back to standard -->
+      <tr><td colspan="3" style="padding:4px;"></td></tr>
+      <tr>
+        <td><strong>Full dashboard</strong> — overview, drill-down, head-to-head, feed, alerts, candidates</td>
+        <td><span class="pill done">Built</span></td>
+        <td style="color:var(--muted)">HTMX live updates, Chart.js sparklines, Alpine.js interactions</td>
+      </tr>
+      <tr>
+        <td><strong>Competitive Landscape Map</strong> — interactive force-directed entity graph</td>
+        <td><span class="pill done">Built</span></td>
+        <td style="color:var(--muted)">Cytoscape.js; 3 edge types: co-mention (news), shared GitHub org, correlated metric trajectories (r ≥ 0.7)</td>
+      </tr>
+      <!-- Documented for later -->
+      <tr>
+        <td><strong>CoinGecko / Mempool.space</strong> market metrics</td>
+        <td><span class="pill later">Documented</span></td>
+        <td style="color:var(--muted)">Free APIs, no keys; add as two new fetchers</td>
+      </tr>
+      <tr>
+        <td><strong>App Store &amp; Play Store version string display</strong></td>
+        <td><span class="pill done">Built</span></td>
+        <td style="color:var(--muted)">iOS and Android version badges on entity detail page, read from MetricSnapshot</td>
+      </tr>
+      <tr>
+        <td><strong>Job changes / hiring tracking</strong></td>
+        <td><span class="pill later">Documented</span></td>
+        <td style="color:var(--muted)">No free API; use optional careers_rss_url in entities.json</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 5 — Next Steps
+══════════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-num">5 / 5</span>
+
+  <div class="eyebrow">Roadmap</div>
+  <h2>Next Steps</h2>
+  <p class="section-desc">Three highest-ROI improvements, ordered by impact vs. effort.</p>
+
+  <div class="cols-3" style="margin-top: 32px;">
+    <div class="next-card">
+      <div class="next-num">1</div>
+      <div class="next-title">Market Metrics (CoinGecko + Mempool)</div>
+      <div class="next-body">
+        Add Bitcoin price, market cap, and network hash rate alongside competitive metrics. Both APIs are free with no keys required. Wires directly into the existing fetcher and delta pipeline — no architectural changes needed.
+      </div>
+      <span class="next-effort">↑ Strategically relevant for Blockstream · Low effort (~2 days)</span>
+    </div>
+
+    <div class="next-card">
+      <div class="next-num">2</div>
+      <div class="next-title">Cross-Source Alert Corroboration</div>
+      <div class="next-body">
+        Group alerts that fire within 48 hours across multiple sources for the same entity into a single "corroborated signal." Reduces noise, increases confidence. No new data needed — purely a post-processing layer on existing alerts.
+      </div>
+      <span class="next-effort">↑ Highest noise-reduction value · Medium effort (~3 days)</span>
+    </div>
+
+    <div class="next-card">
+      <div class="next-num">3</div>
+      <div class="next-title">AI-Enhanced Momentum</div>
+      <div class="next-body">
+        The momentum system currently uses pure statistics (z-scores). Three AI enhancements are ready to build: <strong>anomaly-aware weighting</strong> (Isolation Forest scores amplify unusual signals), <strong>GA-learned metric weights</strong> (evolve optimal weights from user engagement), and <strong>LLM trajectory narratives</strong> ("Green Wallet is accelerating due to a coordinated product push"). Each plugs into existing infrastructure.
+      </div>
+      <span class="next-effort">↑ Transforms numbers into strategic intelligence · Medium effort (~3-5 days)</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Repository</div>
+      <div style="font-size:13px;color:var(--muted);">github.com/CarloCogni/Competitive-Intelligence-Platform</div>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Quick start</div>
+      <div style="font-size:13px;color:var(--muted);">Unzip → double-click start.bat · http://localhost:8000</div>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Login</div>
+      <div style="font-size:13px;color:var(--muted);">batman / the hero we deserve</div>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">License</div>
+      <div style="font-size:13px;color:var(--muted);">AGPL-3.0</div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

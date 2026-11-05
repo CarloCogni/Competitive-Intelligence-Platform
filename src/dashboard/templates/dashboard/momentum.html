@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+{% block title %}Momentum Leaderboard — BlockStream BI{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+
+  <!-- Header -->
+  <div class="flex items-center gap-2 mb-6">
+    <h1 class="text-xl font-bold text-white">Momentum Leaderboard</h1>
+    <button @click="$dispatch('open-help', window._momentumHelp.page)"
+            class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+            title="How to read this page?">?</button>
+  </div>
+
+  {% if not scores %}
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-12 text-center">
+    <p class="text-gray-500 text-sm">No momentum scores computed yet.</p>
+    <p class="text-gray-600 text-xs mt-2">Run <code class="text-gray-400">python manage.py compute_momentum</code> to generate scores.</p>
+  </div>
+  {% else %}
+
+  <!-- Speed vs Acceleration scatter plot -->
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6">
+    <div class="flex items-center gap-2 mb-3">
+      <h2 class="text-sm font-semibold text-white">Speed vs Acceleration</h2>
+      <button @click="$dispatch('open-help', window._momentumHelp.scatter)"
+              class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+              title="How to read this chart?">?</button>
+      <span class="text-[10px] text-gray-500 ml-1">Quadrant map — hover for details, click to navigate</span>
+    </div>
+    <div style="height: 420px; position: relative;">
+      <canvas id="scatter-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Sort toggle (between scatter and table) -->
+  <div class="flex items-center gap-2 mb-3" x-data="{ sortBy: 'score' }">
+    <h2 class="text-sm font-semibold text-white">Rankings</h2>
+    <button @click="$dispatch('open-help', window._momentumHelp.table)"
+            class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+            title="How to read this table?">?</button>
+    <div class="ml-auto flex rounded border border-gray-700 overflow-hidden text-xs">
+      <button @click="sortBy = 'score'; window._resortTable('score')"
+              :class="sortBy === 'score' ? 'bg-brand-500 text-black font-medium' : 'text-gray-400 hover:text-gray-200'"
+              class="px-3 py-1 transition-colors">
+        Sort by Speed
+      </button>
+      <button @click="sortBy = 'acceleration'; window._resortTable('acceleration')"
+              :class="sortBy === 'acceleration' ? 'bg-brand-500 text-black font-medium' : 'text-gray-400 hover:text-gray-200'"
+              class="px-3 py-1 transition-colors">
+        Sort by Acceleration
+      </button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden mb-6">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider">
+          <th class="px-4 py-3 text-left w-12">#</th>
+          <th class="px-4 py-3 text-left">Entity</th>
+          <th class="px-4 py-3 text-right">Speed</th>
+          <th class="px-4 py-3 text-right">Acceleration</th>
+          <th class="px-4 py-3 text-right">Coverage</th>
+          <th class="px-4 py-3 text-left w-44">Top Signal</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        {% for ms in scores %}
+        <tr class="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors leaderboard-row"
+            data-score="{{ ms.score }}"
+            data-accel="{{ ms.acceleration|default_if_none:'0' }}">
+          <td class="px-4 py-3 text-gray-500 font-mono text-xs row-rank">{{ forloop.counter }}</td>
+          <td class="px-4 py-3">
+            <a href="{% url 'dashboard:entity_detail' ms.entity.slug %}" class="text-gray-200 hover:text-white transition-colors font-medium">{{ ms.entity.name }}</a>
+            {% if ms.entity.is_primary %}<span class="ml-1 text-brand-500 text-[10px] font-semibold">Blockstream</span>{% endif %}
+          </td>
+          <td class="px-4 py-3 text-right font-mono">
+            {% if ms.score > 0 %}<span class="text-emerald-400">+{{ ms.score|floatformat:3 }}</span>{% elif ms.score < 0 %}<span class="text-red-400">{{ ms.score|floatformat:3 }}</span>{% else %}<span class="text-gray-500">0.000</span>{% endif %}
+          </td>
+          <td class="px-4 py-3 text-right font-mono text-xs">
+            {% if ms.acceleration is not None %}
+              {% if ms.acceleration > 0.01 %}
+              <span class="text-emerald-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+                +{{ ms.acceleration|floatformat:3 }}
+              </span>
+              {% elif ms.acceleration < -0.01 %}
+              <span class="text-red-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                {{ ms.acceleration|floatformat:3 }}
+              </span>
+              {% else %}<span class="text-gray-600">~ 0.000</span>{% endif %}
+            {% else %}<span class="text-gray-600">n/a</span>{% endif %}
+          </td>
+          <td class="px-4 py-3 text-right">
+            <span class="text-xs {% if ms.metrics_used >= 8 %}text-gray-300{% elif ms.metrics_used >= 4 %}text-gray-400{% else %}text-gray-600{% endif %}">
+              {{ ms.metrics_used }}/{{ total_metrics }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-xs text-gray-500" id="top-signal-{{ forloop.counter0 }}"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Two charts side by side -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Speed over time chart with entity filter -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <h2 class="text-sm font-semibold text-white">Speed Over Time</h2>
+        <button @click="$dispatch('open-help', window._momentumHelp.timeline)"
+                class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                title="What is this chart?">?</button>
+        <span class="ml-auto text-[10px] text-gray-500">90 days · click pills to toggle</span>
+      </div>
+      <!-- Entity filter pills -->
+      <div id="entity-pills" class="flex flex-wrap gap-1 mb-3"></div>
+      <div style="height: 340px; position: relative;">
+        <canvas id="momentum-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Per-metric breakdown for #1 entity -->
+    {% with top=scores.0 %}
+    {% if top %}
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <h2 class="text-sm font-semibold text-white">#1 Breakdown: {{ top.entity.name }}</h2>
+        <button @click="$dispatch('open-help', window._momentumHelp.breakdown)"
+                class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                title="What is this chart?">?</button>
+      </div>
+      <div style="height: 340px; position: relative;">
+        <canvas id="breakdown-chart"></canvas>
+      </div>
+    </div>
+    {% endif %}
+    {% endwith %}
+  </div>
+
+  {% endif %}
+</div>
+
+<!-- Help content in JS to avoid Alpine string-literal issues -->
+<script>
+window._momentumHelp = {
+  page: {
+    title: 'Momentum Leaderboard',
+    body: '<p class="mb-3">The momentum score measures <em>how fast</em> each entity is moving relative to the field \u2014 it is a <span class="text-white font-semibold">velocity</span>, not a position.</p>'
+      + '<p class="mb-3">Think of it like physics: <span class="text-white font-semibold">score = speed</span> (how fast right now), <span class="text-white font-semibold">acceleration = change in speed</span> (speeding up or slowing down).</p>'
+      + '<ul class="space-y-2 list-none">'
+      + '<li><span class="text-white font-semibold">How it works:</span> For each metric (stars, forks, ratings, mentions\u2026), we compute the 7-day change. Then we z-score normalize each across all entities \u2014 so +1.0 means "one standard deviation faster than average". The entity score is the weighted average of all its z-scores.</li>'
+      + '<li><span class="text-emerald-400 font-semibold">Positive score</span> = entity is growing faster than average across its metrics.</li>'
+      + '<li><span class="text-red-400 font-semibold">Negative score</span> = entity is shrinking or growing slower than average.</li>'
+      + '<li><span class="text-white font-semibold">Acceleration</span> = today\u2019s score minus yesterday\u2019s. Positive acceleration means the entity is <em>gaining</em> speed; negative means it\u2019s <em>losing</em> speed \u2014 even if the score itself is still high.</li>'
+      + '</ul>'
+  },
+  scatter: {
+    title: 'Speed vs Acceleration \u2014 Quadrant Map',
+    body: '<p class="mb-3">This scatter plot maps every entity on two axes: <span class="text-white font-semibold">speed</span> (horizontal) and <span class="text-white font-semibold">acceleration</span> (vertical).</p>'
+      + '<p class="mb-3 text-white font-semibold">The four quadrants:</p>'
+      + '<ul class="space-y-2 list-none">'
+      + '<li><span class="text-emerald-400 font-semibold">Top-right: Dominant</span> \u2014 Fast AND accelerating.</li>'
+      + '<li><span class="text-amber-400 font-semibold">Top-left: Rising Stars</span> \u2014 Not fast yet, but gaining speed. <span class="text-white">This is where you spot threats early.</span></li>'
+      + '<li><span class="text-orange-400 font-semibold">Bottom-right: Fading Leaders</span> \u2014 Still ahead, but losing steam.</li>'
+      + '<li><span class="text-red-400 font-semibold">Bottom-left: Stalling</span> \u2014 Falling behind and the gap is widening.</li>'
+      + '</ul>'
+      + '<p class="mt-3 text-gray-500 text-xs">Orange squares = Blockstream. Blue circles = competitors. Click any dot to navigate.</p>'
+  },
+  table: {
+    title: 'Rankings Table',
+    body: '<p class="mb-3">All entities ranked by the selected dimension.</p>'
+      + '<ul class="space-y-2 list-none">'
+      + '<li><span class="text-white font-semibold">Sort by Speed</span> \u2014 "Who is fastest right now?" Answers whether an entity is ahead or behind the field.</li>'
+      + '<li><span class="text-white font-semibold">Sort by Acceleration</span> \u2014 "Who is changing fastest?" The #1 entity here may not be the fastest, but it\u2019s gaining ground the fastest. If the trend continues, it overtakes the speed leaders.</li>'
+      + '<li><span class="text-white font-semibold">Coverage</span> \u2014 fraction of tracked metrics with data. Low coverage = less reliable score.</li>'
+      + '<li><span class="text-white font-semibold">Top Signal</span> \u2014 the single metric driving most of the momentum.</li>'
+      + '</ul>'
+  },
+  timeline: {
+    title: 'Speed Over Time',
+    body: '<p class="mb-3">Line chart tracking momentum score (speed) for each entity over the last 90 days.</p>'
+      + '<ul class="space-y-2 list-none">'
+      + '<li><span class="text-white font-semibold">Rising line</span> = gaining speed. <span class="text-white font-semibold">Falling line</span> = losing speed.</li>'
+      + '<li><span class="text-white font-semibold">Crossing lines</span> = one entity overtaking another.</li>'
+      + '<li><span class="text-white font-semibold">Entity pills</span> \u2014 click to toggle visibility. Top 5 are shown by default. Click any pill to add/remove its line from the chart.</li>'
+      + '</ul>'
+      + '<p class="mt-3 text-gray-500 text-xs">The slope of each line IS the acceleration.</p>'
+  },
+  breakdown: {
+    title: 'Per-Metric Breakdown',
+    body: '<p class="mb-3">Z-score contribution of each metric to the #1 ranked entity\u2019s composite score.</p>'
+      + '<ul class="space-y-2 list-none">'
+      + '<li><span class="text-emerald-400 font-semibold">Green bars</span> = growing faster than the field average.</li>'
+      + '<li><span class="text-red-400 font-semibold">Red bars</span> = growing slower or declining.</li>'
+      + '<li><span class="text-white font-semibold">Bar length</span> = z-score magnitude. +2.0 = two standard deviations above the mean velocity.</li>'
+      + '</ul>'
+      + '<p class="mt-3 text-gray-500 text-xs">Hover for raw velocity and weight.</p>'
+  },
+};
+</script>
+
+{% if scores %}
+{{ scores.0.detail|json_script:"top-detail" }}
+
+<script>
+(function() {
+  var scatterData = {{ scatter_data_json|safe }};
+
+  // ── Top-signal column ──
+  {% for ms in scores %}
+  (function() {
+    var detail = {{ ms.detail|safe }};
+    var bestKey = null, bestZ = 0;
+    for (var k in detail) {
+      if (Math.abs(detail[k].z_score) > Math.abs(bestZ)) { bestZ = detail[k].z_score; bestKey = k; }
+    }
+    var cell = document.getElementById('top-signal-{{ forloop.counter0 }}');
+    if (cell && bestKey) {
+      var label = bestKey.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+      var color = bestZ >= 0 ? 'text-emerald-400' : 'text-red-400';
+      cell.innerHTML = '<span class="' + color + '">' + label + '</span> <span class="text-gray-600 ml-1">z=' + bestZ.toFixed(2) + '</span>';
+    }
+  })();
+  {% endfor %}
+
+  // ── Sort toggle ──
+  window._resortTable = function(by) {
+    var tbody = document.getElementById('leaderboard-body');
+    var rows = Array.from(tbody.querySelectorAll('.leaderboard-row'));
+    rows.sort(function(a, b) {
+      if (by === 'acceleration') {
+        return parseFloat(b.dataset.accel) - parseFloat(a.dataset.accel);
+      }
+      return parseFloat(b.dataset.score) - parseFloat(a.dataset.score);
+    });
+    rows.forEach(function(row, idx) {
+      row.querySelector('.row-rank').textContent = idx + 1;
+      tbody.appendChild(row);
+    });
+  };
+
+  // ── Scatter chart ──
+  if (scatterData.length) {
+    var primaryPoints = scatterData.filter(function(d) { return d.is_primary; });
+    var competitorPoints = scatterData.filter(function(d) { return !d.is_primary; });
+
+    new Chart(document.getElementById('scatter-chart'), {
+      type: 'scatter',
+      data: {
+        datasets: [
+          {
+            label: 'Competitors',
+            data: competitorPoints.map(function(d) { return { x: d.x, y: d.y, name: d.name, slug: d.slug, coverage: d.coverage }; }),
+            backgroundColor: 'rgba(59,130,246,0.7)',
+            borderColor: '#3b82f6',
+            borderWidth: 1,
+            pointRadius: 6,
+            pointHoverRadius: 9,
+          },
+          {
+            label: 'Blockstream',
+            data: primaryPoints.map(function(d) { return { x: d.x, y: d.y, name: d.name, slug: d.slug, coverage: d.coverage }; }),
+            backgroundColor: 'rgba(247,147,26,0.8)',
+            borderColor: '#f7931a',
+            borderWidth: 2,
+            pointRadius: 7,
+            pointHoverRadius: 10,
+            pointStyle: 'rectRounded',
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'nearest', intersect: true },
+        plugins: {
+          legend: { position: 'top', labels: { color: '#9ca3af', font: { size: 10 }, usePointStyle: true } },
+          tooltip: {
+            backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: 1,
+            titleFont: { size: 12, weight: 'bold' }, bodyFont: { size: 11 },
+            callbacks: {
+              title: function(items) { return items[0].raw.name; },
+              label: function(ctx) {
+                var d = ctx.raw;
+                return 'Speed: ' + (d.x >= 0 ? '+' : '') + d.x.toFixed(3) + '  |  Accel: ' + (d.y >= 0 ? '+' : '') + d.y.toFixed(3);
+              },
+              afterLabel: function(ctx) {
+                var d = ctx.raw;
+                return (d.x >= 0 ? 'Fast' : 'Slow') + ' + ' + (d.y >= 0 ? 'Accelerating' : 'Decelerating') + '  (' + d.coverage + ' metrics)';
+              },
+            },
+          },
+        },
+        scales: {
+          x: { title: { display: true, text: 'Speed (Momentum Score)', color: '#9ca3af', font: { size: 11 } }, ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: '#1f293720' } },
+          y: { title: { display: true, text: 'Acceleration (Day-over-Day \u0394)', color: '#9ca3af', font: { size: 11 } }, ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: '#1f293720' } },
+        },
+        onClick: function(evt, elements) {
+          if (elements.length > 0) {
+            var slug = this.data.datasets[elements[0].datasetIndex].data[elements[0].index].slug;
+            window.location.href = '/entity/' + slug + '/';
+          }
+        },
+      },
+      plugins: [{
+        id: 'quadrantBackground',
+        beforeDraw: function(chart) {
+          var ctx = chart.ctx, a = chart.chartArea;
+          var cx = Math.max(a.left, Math.min(a.right, chart.scales.x.getPixelForValue(0)));
+          var cy = Math.max(a.top, Math.min(a.bottom, chart.scales.y.getPixelForValue(0)));
+
+          ctx.fillStyle = 'rgba(16,185,129,0.04)'; ctx.fillRect(cx, a.top, a.right - cx, cy - a.top);
+          ctx.fillStyle = 'rgba(245,158,11,0.04)'; ctx.fillRect(a.left, a.top, cx - a.left, cy - a.top);
+          ctx.fillStyle = 'rgba(249,115,22,0.04)'; ctx.fillRect(cx, cy, a.right - cx, a.bottom - cy);
+          ctx.fillStyle = 'rgba(239,68,68,0.04)'; ctx.fillRect(a.left, cy, cx - a.left, a.bottom - cy);
+
+          ctx.save(); ctx.font = '10px ui-monospace, monospace'; ctx.textAlign = 'center';
+          ctx.fillStyle = 'rgba(16,185,129,0.35)'; ctx.fillText('DOMINANT', (cx + a.right) / 2, a.top + 14);
+          ctx.fillStyle = 'rgba(245,158,11,0.35)'; ctx.fillText('RISING STARS', (a.left + cx) / 2, a.top + 14);
+          ctx.fillStyle = 'rgba(249,115,22,0.35)'; ctx.fillText('FADING LEADERS', (cx + a.right) / 2, a.bottom - 10);
+          ctx.fillStyle = 'rgba(239,68,68,0.35)'; ctx.fillText('STALLING', (a.left + cx) / 2, a.bottom - 10);
+          ctx.restore();
+
+          ctx.save(); ctx.strokeStyle = 'rgba(107,114,128,0.3)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+          ctx.beginPath(); ctx.moveTo(cx, a.top); ctx.lineTo(cx, a.bottom); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(a.left, cy); ctx.lineTo(a.right, cy); ctx.stroke();
+          ctx.restore();
+        },
+      }],
+    });
+  }
+
+  // ── Speed Over Time chart with entity pills ──
+  var momentumChart = null;
+
+  fetch("{% url 'dashboard:momentum_chart_data' %}")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.datasets.length) return;
+
+      var alignedDatasets = data.datasets.map(function(ds) {
+        var dateMap = {};
+        ds.dates.forEach(function(d, i) { dateMap[d] = ds.data[i]; });
+        return Object.assign({}, ds, {
+          data: data.labels.map(function(l) { return dateMap[l] !== undefined ? dateMap[l] : null; }),
+          dates: undefined,
+          spanGaps: true,
+        });
+      });
+
+      momentumChart = new Chart(document.getElementById('momentum-chart'), {
+        type: 'line',
+        data: { labels: data.labels, datasets: alignedDatasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: 1 },
+          },
+          scales: {
+            x: { ticks: { color: '#6b7280', font: { size: 9 }, maxTicksLimit: 12 }, grid: { color: '#1f293740' } },
+            y: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: '#1f293740' }, title: { display: true, text: 'Speed (Score)', color: '#6b7280', font: { size: 10 } } },
+          },
+        },
+      });
+
+      // Build entity filter pills
+      var pillsContainer = document.getElementById('entity-pills');
+      alignedDatasets.forEach(function(ds, idx) {
+        var pill = document.createElement('button');
+        var isVisible = !data.datasets[idx].hidden;
+        pill.className = 'px-2 py-0.5 rounded text-[10px] font-medium border transition-colors';
+        pill.dataset.idx = idx;
+
+        function updatePillStyle() {
+          if (isVisible) {
+            pill.style.backgroundColor = ds.borderColor + '20';
+            pill.style.color = ds.borderColor;
+            pill.style.borderColor = ds.borderColor + '66';
+          } else {
+            pill.style.backgroundColor = '';
+            pill.style.color = '#6b7280';
+            pill.style.borderColor = '#374151';
+          }
+        }
+
+        pill.textContent = ds.label;
+        updatePillStyle();
+
+        pill.addEventListener('click', function() {
+          isVisible = !isVisible;
+          momentumChart.setDatasetVisibility(idx, isVisible);
+          momentumChart.update();
+          updatePillStyle();
+        });
+
+        pillsContainer.appendChild(pill);
+      });
+    });
+
+  // ── Breakdown bar chart for #1 entity ──
+  var detailEl = document.getElementById('top-detail');
+  if (detailEl) {
+    var detail = JSON.parse(detailEl.textContent);
+    var entries = Object.entries(detail).sort(function(a, b) { return b[1].z_score - a[1].z_score; });
+    var labels = entries.map(function(e) { return e[0].replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); }); });
+    var zScores = entries.map(function(e) { return e[1].z_score; });
+    var bgColors = zScores.map(function(z) { return z >= 0 ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)'; });
+    var borderColors = zScores.map(function(z) { return z >= 0 ? '#10b981' : '#ef4444'; });
+
+    new Chart(document.getElementById('breakdown-chart'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{ label: 'Z-Score', data: zScores, backgroundColor: bgColors, borderColor: borderColors, borderWidth: 1 }],
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: 1,
+            callbacks: { afterLabel: function(ctx) { var v = detail[entries[ctx.dataIndex][0]]; return 'Velocity: ' + v.velocity.toFixed(2) + ' | Weight: ' + v.weight; } },
+          },
+        },
+        scales: {
+          x: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: '#1f293740' }, title: { display: true, text: 'Z-Score', color: '#6b7280', font: { size: 10 } } },
+          y: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { display: false } },
+        },
+      },
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

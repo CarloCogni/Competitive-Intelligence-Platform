@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-950">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — BlockStream BI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { brand: { 500: '#f7931a', 600: '#e07d0e' } } } }
+    }
+  </script>
+</head>
+<body class="h-full flex items-center justify-center bg-gray-950 font-mono">
+
+  <div class="w-full max-w-sm">
+
+    <!-- Logo / title -->
+    <div class="text-center mb-8">
+      <span class="text-brand-500 font-bold text-2xl tracking-widest">BlockStream BI</span>
+      <p class="text-gray-500 text-xs mt-1">Competitive Intelligence Dashboard</p>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-8 shadow-2xl">
+      <h1 class="text-white font-semibold text-sm uppercase tracking-wider mb-6">Sign in</h1>
+
+      {% if form.errors %}
+      <div class="mb-4 px-3 py-2 bg-red-900/40 border border-red-700 rounded text-red-400 text-xs">
+        Invalid username or password.
+      </div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}" />
+
+        <div class="space-y-4">
+          <div>
+            <label for="id_username" class="block text-xs text-gray-500 mb-1">Username</label>
+            <input id="id_username"
+                   name="username"
+                   type="text"
+                   autocomplete="username"
+                   autofocus
+                   required
+                   class="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded px-3 py-2
+                          focus:outline-none focus:border-brand-500 transition-colors placeholder-gray-600" />
+          </div>
+
+          <div>
+            <label for="id_password" class="block text-xs text-gray-500 mb-1">Password</label>
+            <input id="id_password"
+                   name="password"
+                   type="password"
+                   autocomplete="current-password"
+                   required
+                   class="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded px-3 py-2
+                          focus:outline-none focus:border-brand-500 transition-colors" />
+          </div>
+        </div>
+
+        <button type="submit"
+                class="mt-6 w-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold
+                       py-2 rounded transition-colors">
+          Sign in
+        </button>
+      </form>
+    </div>
+
+  </div>
+</body>
+</html>

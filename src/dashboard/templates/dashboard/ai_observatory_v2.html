@@ -1,0 +1,603 @@
+{% extends "base.html" %}
+{% block title %}AI Observatory — Threshold Evolution{% endblock %}
+
+{% block extra_head %}
+<!-- Plotly.js — loaded only on this page -->
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<nav class="text-xs text-gray-500 mb-4">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white">Dashboard</a>
+  <span class="mx-2">/</span>
+  <a href="{% url 'dashboard:ai_observatory' %}" class="hover:text-white">AI Observatory</a>
+  <span class="mx-2">/</span>
+  <span class="text-gray-300">Threshold Evolution</span>
+</nav>
+
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-xl font-bold text-white">Threshold Evolution</h1>
+    <p class="text-xs text-gray-500 mt-0.5">
+      How each entity's anomaly detection threshold converges from an initial LLM estimate
+      (cold&nbsp;start) toward a ML-trained value (dynamic) over monthly training runs.
+    </p>
+  </div>
+  <a href="{% url 'dashboard:ai_observatory' %}"
+     class="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 rounded px-3 py-1.5 transition-colors">
+    ← Back to AI Observatory
+  </a>
+</div>
+
+<!-- Controls bar -->
+<div class="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4 flex flex-wrap items-center gap-3">
+
+  <!-- Metric selector -->
+  <div class="flex items-center gap-2">
+    <label for="metric-select" class="text-xs text-gray-400 font-medium whitespace-nowrap">Metric</label>
+    <select id="metric-select"
+            class="text-xs bg-gray-800 border border-gray-700 text-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-gray-500">
+      <option value="">Loading…</option>
+    </select>
+  </div>
+
+  <!-- Marker shape legend -->
+  <div class="flex items-center gap-4 text-xs text-gray-500">
+    <span class="flex items-center gap-1.5">
+      <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="none" stroke="#9ca3af" stroke-width="2"/></svg>
+      cold start
+    </span>
+    <span class="flex items-center gap-1.5">
+      <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" fill="#9ca3af"/></svg>
+      dynamic (ML)
+    </span>
+  </div>
+
+  <!-- View toggles -->
+  <div class="flex items-center gap-1">
+    <button id="btn-trends"
+            class="toggle-btn text-xs px-2.5 py-1 rounded border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors"
+            data-active="false">
+      Trend Lines
+    </button>
+    <button id="btn-log"
+            class="toggle-btn text-xs px-2.5 py-1 rounded border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors"
+            data-active="false">
+      Log Y
+    </button>
+  </div>
+
+  <!-- Time range buttons — pushed to the right -->
+  <div class="flex items-center gap-1 ml-auto">
+    <button data-range="30d" class="range-btn text-xs px-2.5 py-1 rounded border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors">30d</button>
+    <button data-range="90d" class="range-btn text-xs px-2.5 py-1 rounded border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors">90d</button>
+    <button data-range="6m"  class="range-btn text-xs px-2.5 py-1 rounded border border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors">6m</button>
+    <button data-range="all" class="range-btn text-xs px-2.5 py-1 rounded border border-brand-500 text-brand-500 transition-colors">All</button>
+  </div>
+</div>
+
+<!-- Chart card -->
+<div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+
+  <!-- Entity pills row -->
+  <div class="flex items-center gap-2 mb-4 min-h-[28px] flex-wrap">
+    <button id="toggle-all-btn"
+            class="text-xs px-2.5 py-1 rounded-full border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 transition-colors flex-shrink-0">
+      Deselect All
+    </button>
+    <div id="entity-pills" class="flex flex-wrap gap-2"></div>
+  </div>
+
+  <!-- Plotly chart container -->
+  <div id="evolution-chart" style="height:460px;"></div>
+
+  <!-- Empty state -->
+  <p id="evolution-empty"
+     class="hidden text-xs text-gray-600 text-center py-12">
+    No threshold history for this metric. Run:
+    <code class="text-gray-400">python manage.py seed_threshold_history</code>
+  </p>
+</div>
+
+<!-- Convergence summary panel -->
+<div id="convergence-card" class="hidden mt-4 bg-gray-900 border border-gray-800 rounded-lg p-4">
+  <div class="flex items-baseline gap-3 mb-1">
+    <h3 class="text-xs font-semibold text-gray-400">Convergence Summary</h3>
+    <span id="convergence-metric-badge"
+          class="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-brand-500 font-mono border border-gray-700"></span>
+  </div>
+  <p class="text-xs text-gray-600 mb-3">
+    Threshold = the % change that triggers an alert for this metric on each entity.
+    Cold Start is the LLM estimate; Latest (ML) is the most recent Isolation Forest value.
+  </p>
+  <div class="overflow-x-auto">
+    <table class="w-full text-xs">
+      <thead>
+        <tr class="text-gray-500 text-left">
+          <th class="pb-2 pr-3 font-medium">Entity</th>
+          <th class="pb-2 pr-3 font-medium">Cold Start</th>
+          <th class="pb-2 pr-3 font-medium">Latest (ML)</th>
+          <th class="pb-2 pr-3 font-medium">Δ Change</th>
+          <th class="pb-2 pr-3 font-medium">Trend</th>
+          <th class="pb-2 font-medium">Points</th>
+        </tr>
+      </thead>
+      <tbody id="convergence-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Explanation card -->
+<div class="mt-4 bg-gray-900 border border-gray-800 rounded-lg p-4 text-xs text-gray-500 space-y-1">
+  <p>
+    <span class="text-gray-300 font-medium">Cold start</span> — Month 1 threshold is an LLM-suggested
+    estimate for new entities before any training data is available.
+  </p>
+  <p>
+    <span class="text-gray-300 font-medium">Dynamic</span> — Subsequent months use an
+    Isolation Forest model trained on historical metric snapshots. The threshold is the
+    95th-percentile absolute change (p95_abs_change) observed in the training window.
+  </p>
+  <p>
+    <span class="text-gray-300 font-medium">Convergence</span> — As more data accumulates, the
+    ML-derived threshold tightens toward the true signal variance, reducing false positives.
+    A ↓ Tightening trend is the desired outcome.
+  </p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---- Colour palette ---- */
+  var PALETTE = [
+    "#f7931a", "#60a5fa", "#a78bfa", "#34d399", "#f472b6",
+    "#fb923c", "#38bdf8", "#c084fc", "#4ade80", "#facc15",
+  ];
+
+  /* ---- State ---- */
+  var visibleEntities   = {};   /* entity_id → bool */
+  var currentMetricKey  = null; /* tracks active metric to reset selections on change */
+  var currentSeries     = [];
+  var rangeListenerAttached = false;
+  var activeRange       = "all";
+  var showTrends        = false;
+  var logScale          = false;
+
+  /* ---- Plotly base layout ---- */
+  var LAYOUT_BASE = {
+    paper_bgcolor: "#111827",
+    plot_bgcolor:  "#111827",
+    font:   { color: "#9ca3af", size: 11 },
+    margin: { t: 10, r: 20, b: 40, l: 60 },
+    hovermode: "x unified",
+    xaxis: {
+      gridcolor:  "rgba(255,255,255,0.04)",
+      tickcolor:  "#374151",
+      linecolor:  "#374151",
+      tickfont:   { size: 10, color: "#6b7280" },
+      showspikes: true,
+      spikecolor: "rgba(255,255,255,0.18)",
+      spikethickness: 1,
+      spikedash:  "dot",
+      spikemode:  "across",
+      rangeslider: {
+        visible:     true,
+        bgcolor:     "#1f2937",
+        bordercolor: "#374151",
+        borderwidth: 1,
+        thickness:   0.07,
+      },
+    },
+    yaxis: {
+      title:      { text: "Threshold (%)", font: { size: 10, color: "#9ca3af" } },
+      gridcolor:  "rgba(255,255,255,0.04)",
+      tickcolor:  "#374151",
+      linecolor:  "#374151",
+      tickfont:   { size: 10, color: "#6b7280" },
+      rangemode:  "tozero",
+      type:       "linear",
+    },
+    showlegend: false,
+  };
+
+  var PLOTLY_CONFIG = { displayModeBar: false, responsive: true };
+
+  /* ---- Linear regression over date strings + value arrays ----
+     Returns { m, b, xs, t0 } where xs is day-offsets from first date.
+     m is in units of %/day. */
+  function computeRegression(dates, values) {
+    var n = dates.length;
+    if (n < 2) return null;
+    var t0 = new Date(dates[0]).getTime();
+    var xs = dates.map(function (d) {
+      return (new Date(d).getTime() - t0) / 86400000; /* days */
+    });
+    var sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for (var i = 0; i < n; i++) {
+      sumX  += xs[i];
+      sumY  += values[i];
+      sumXY += xs[i] * values[i];
+      sumX2 += xs[i] * xs[i];
+    }
+    var denom = n * sumX2 - sumX * sumX;
+    if (Math.abs(denom) < 1e-10) return null;
+    var m = (n * sumXY - sumX * sumY) / denom;
+    var b = (sumY - m * sumX) / n;
+    return { m: m, b: b, xs: xs, t0: t0 };
+  }
+
+  /* ---- Build Plotly traces ---- */
+  function buildTraces(series) {
+    var entityTraces = series.map(function (s, idx) {
+      var color   = PALETTE[idx % PALETTE.length];
+      var symbols = s.sources.map(function (src) {
+        return src === "cold_start" ? "circle" : "square";
+      });
+      var sizes = s.sources.map(function (src) {
+        return src === "cold_start" ? 8 : 7;
+      });
+      var markerColors = s.sources.map(function (src) {
+        return src === "cold_start" ? "transparent" : color;
+      });
+      var customdata = s.sources.map(function (src) {
+        return src === "cold_start" ? "Cold Start" : "Dynamic (ML)";
+      });
+
+      return {
+        x: s.dates,
+        y: s.values,
+        mode: "lines+markers",
+        name: s.entity_name,
+        visible: visibleEntities[s.entity_id] !== false,
+        line:   { color: color, width: 2 },
+        marker: {
+          color:  markerColors,
+          line:   { color: color, width: 2 },
+          symbol: symbols,
+          size:   sizes,
+        },
+        customdata: customdata,
+        /* compact template for unified hover */
+        hovertemplate: "%{y:.1f}% <span style='color:#6b7280'>(%{customdata})</span><extra>" + s.entity_name + "</extra>",
+        meta: { entity_id: s.entity_id, kind: "entity" },
+      };
+    });
+
+    if (!showTrends) return entityTraces;
+
+    /* Add one dashed trend trace per entity */
+    var trendTraces = [];
+    series.forEach(function (s, idx) {
+      var color = PALETTE[idx % PALETTE.length];
+      var reg   = computeRegression(s.dates, s.values);
+      if (!reg) return;
+
+      var lastXDays = reg.xs[reg.xs.length - 1];
+      var y0 = Math.max(0, reg.b);
+      var y1 = Math.max(0, reg.m * lastXDays + reg.b);
+
+      trendTraces.push({
+        x: [s.dates[0], s.dates[s.dates.length - 1]],
+        y: [y0, y1],
+        mode: "lines",
+        name: s.entity_name + " (trend)",
+        visible: visibleEntities[s.entity_id] !== false,
+        line: { color: color, width: 1, dash: "dot" },
+        opacity: 0.55,
+        hoverinfo: "skip",
+        showlegend: false,
+        meta: { entity_id: s.entity_id, kind: "trend" },
+      });
+    });
+
+    return entityTraces.concat(trendTraces);
+  }
+
+  /* ---- Return all trace indices belonging to an entity ---- */
+  function traceIndicesForEntity(chartDiv, entityId) {
+    return chartDiv.data.reduce(function (acc, trace, i) {
+      if (trace.meta && trace.meta.entity_id === entityId) acc.push(i);
+      return acc;
+    }, []);
+  }
+
+  /* ---- Render / update chart ---- */
+  function renderChart(series) {
+    var chartDiv = document.getElementById("evolution-chart");
+    var emptyMsg = document.getElementById("evolution-empty");
+
+    if (!series || series.length === 0) {
+      chartDiv.style.display = "none";
+      emptyMsg.classList.remove("hidden");
+      return;
+    }
+
+    chartDiv.style.display = "";
+    emptyMsg.classList.add("hidden");
+
+    /* Apply current log/linear setting */
+    var layout = Object.assign({}, LAYOUT_BASE, {
+      yaxis: Object.assign({}, LAYOUT_BASE.yaxis, {
+        type: logScale ? "log" : "linear",
+      }),
+    });
+
+    Plotly.react(chartDiv, buildTraces(series), layout, PLOTLY_CONFIG);
+
+    /* Wire relayout listener once — clears range button highlight on manual pan */
+    if (!rangeListenerAttached) {
+      rangeListenerAttached = true;
+      chartDiv.on("plotly_relayout", function (ed) {
+        if (ed["xaxis.range[0]"] !== undefined && activeRange !== null) {
+          activeRange = null;
+          updateRangeBtns(null);
+        }
+      });
+    }
+  }
+
+  /* ---- Entity pill buttons ---- */
+  function buildPills(series) {
+    var container = document.getElementById("entity-pills");
+    container.innerHTML = "";
+
+    series.forEach(function (s, idx) {
+      var color     = PALETTE[idx % PALETTE.length];
+      var isVisible = visibleEntities[s.entity_id] !== false;
+
+      var btn = document.createElement("button");
+      btn.dataset.entityId = s.entity_id;
+      btn.className =
+        "text-xs px-2.5 py-1 rounded-full border transition-all duration-150 " +
+        (isVisible
+          ? "border-transparent text-gray-900"
+          : "border-gray-700 text-gray-500 bg-transparent");
+      if (isVisible) btn.style.backgroundColor = color;
+      btn.textContent = s.entity_name;
+
+      /* Click → toggle visibility */
+      btn.addEventListener("click", function () {
+        var eid = parseInt(this.dataset.entityId, 10);
+        visibleEntities[eid] = visibleEntities[eid] === false;
+        var chartDiv = document.getElementById("evolution-chart");
+        var indices  = traceIndicesForEntity(chartDiv, eid);
+        if (indices.length) {
+          Plotly.restyle(chartDiv, { visible: visibleEntities[eid] !== false }, indices);
+        }
+        buildPills(currentSeries);
+        updateToggleAllBtn();
+      });
+
+      /* Hover → fade all other traces */
+      btn.addEventListener("mouseenter", function () {
+        var eid      = parseInt(this.dataset.entityId, 10);
+        var chartDiv = document.getElementById("evolution-chart");
+        if (!chartDiv.data) return;
+        var opacities = chartDiv.data.map(function (trace) {
+          return (trace.meta && trace.meta.entity_id === eid) ? 1 : 0.07;
+        });
+        Plotly.restyle(chartDiv, { opacity: opacities });
+      });
+
+      btn.addEventListener("mouseleave", function () {
+        var chartDiv = document.getElementById("evolution-chart");
+        if (!chartDiv.data) return;
+        var ones = chartDiv.data.map(function () { return 1; });
+        Plotly.restyle(chartDiv, { opacity: ones });
+      });
+
+      container.appendChild(btn);
+    });
+
+    updateToggleAllBtn();
+  }
+
+  /* ---- All/None toggle ---- */
+  var toggleAllBtn = document.getElementById("toggle-all-btn");
+
+  function updateToggleAllBtn() {
+    var allVisible = currentSeries.length > 0 &&
+      currentSeries.every(function (s) { return visibleEntities[s.entity_id] !== false; });
+    toggleAllBtn.textContent = allVisible ? "Deselect All" : "Select All";
+  }
+
+  toggleAllBtn.addEventListener("click", function () {
+    var allVisible  = currentSeries.every(function (s) { return visibleEntities[s.entity_id] !== false; });
+    var nextState   = !allVisible;
+    var chartDiv    = document.getElementById("evolution-chart");
+    currentSeries.forEach(function (s) { visibleEntities[s.entity_id] = nextState; });
+    Plotly.restyle(chartDiv, { visible: nextState });
+    buildPills(currentSeries);
+  });
+
+  /* ---- Trend Lines toggle ---- */
+  var btnTrends = document.getElementById("btn-trends");
+  btnTrends.addEventListener("click", function () {
+    showTrends = !showTrends;
+    setToggleActive(btnTrends, showTrends);
+    renderChart(currentSeries);
+  });
+
+  /* ---- Log Y toggle ---- */
+  var btnLog = document.getElementById("btn-log");
+  btnLog.addEventListener("click", function () {
+    logScale = !logScale;
+    setToggleActive(btnLog, logScale);
+    var chartDiv = document.getElementById("evolution-chart");
+    Plotly.relayout(chartDiv, { "yaxis.type": logScale ? "log" : "linear" });
+  });
+
+  function setToggleActive(btn, active) {
+    btn.className =
+      "toggle-btn text-xs px-2.5 py-1 rounded border transition-colors " +
+      (active
+        ? "border-brand-500 text-brand-500"
+        : "border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500");
+  }
+
+  /* ---- Time range buttons ---- */
+  function updateRangeBtns(activeKey) {
+    document.querySelectorAll(".range-btn").forEach(function (btn) {
+      var isActive = btn.dataset.range === activeKey;
+      btn.className =
+        "range-btn text-xs px-2.5 py-1 rounded border transition-colors " +
+        (isActive
+          ? "border-brand-500 text-brand-500"
+          : "border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500");
+    });
+  }
+
+  function applyRange(rangeKey) {
+    activeRange = rangeKey;
+    updateRangeBtns(rangeKey);
+    var chartDiv = document.getElementById("evolution-chart");
+    if (rangeKey === "all") {
+      Plotly.relayout(chartDiv, { "xaxis.autorange": true });
+      return;
+    }
+    var end   = new Date();
+    var start = new Date(end);
+    if      (rangeKey === "30d") { start.setDate(start.getDate() - 30); }
+    else if (rangeKey === "90d") { start.setDate(start.getDate() - 90); }
+    else if (rangeKey === "6m")  { start.setMonth(start.getMonth() - 6); }
+    Plotly.relayout(chartDiv, {
+      "xaxis.range[0]": start.toISOString().slice(0, 10),
+      "xaxis.range[1]": end.toISOString().slice(0, 10),
+    });
+  }
+
+  document.querySelectorAll(".range-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () { applyRange(this.dataset.range); });
+  });
+
+  /* ---- Convergence summary table ---- */
+  function buildConvergenceTable(series, metricKey) {
+    var card  = document.getElementById("convergence-card");
+    var tbody = document.getElementById("convergence-tbody");
+    if (!series || series.length === 0) {
+      card.classList.add("hidden");
+      return;
+    }
+    card.classList.remove("hidden");
+
+    /* Show which metric this table is for */
+    var badge = document.getElementById("convergence-metric-badge");
+    badge.textContent = metricKey ? metricKey.replace(/_/g, " ") : "";
+
+    tbody.innerHTML = "";
+
+    series.forEach(function (s, idx) {
+      var color = PALETTE[idx % PALETTE.length];
+
+      /* Cold start: first point with source "cold_start" */
+      var csIdx = s.sources.indexOf("cold_start");
+      var coldStart = csIdx >= 0 ? s.values[csIdx] : null;
+
+      /* Latest dynamic: last point with source "dynamic" */
+      var latestDynVal  = null;
+      for (var i = s.sources.length - 1; i >= 0; i--) {
+        if (s.sources[i] === "dynamic") { latestDynVal = s.values[i]; break; }
+      }
+
+      /* Δ change */
+      var deltaStr  = "—";
+      var deltaCls  = "text-gray-500";
+      if (coldStart !== null && latestDynVal !== null) {
+        var delta    = latestDynVal - coldStart;
+        var deltaPct = ((delta / coldStart) * 100).toFixed(1);
+        deltaStr = (delta > 0 ? "+" : "") + deltaPct + "%";
+        deltaCls = delta < 0 ? "text-emerald-400" : "text-amber-400";
+      }
+
+      /* Trend direction from regression slope */
+      var trendStr = "—";
+      var trendCls = "text-gray-500";
+      if (s.values.length >= 2) {
+        var reg = computeRegression(s.dates, s.values);
+        if (reg) {
+          /* slope < -0.002 %/day ~ meaningful tightening */
+          if (reg.m < -0.002)      { trendStr = "↓ Tightening"; trendCls = "text-emerald-400"; }
+          else if (reg.m > 0.002)  { trendStr = "↑ Expanding";  trendCls = "text-amber-400";   }
+          else                     { trendStr = "→ Stable";      trendCls = "text-gray-400";    }
+        }
+      }
+
+      var tr = document.createElement("tr");
+      tr.className = "border-t border-gray-800 hover:bg-gray-800/40 transition-colors";
+      tr.innerHTML =
+        '<td class="py-2 pr-3">' +
+          '<span class="flex items-center gap-2">' +
+            '<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:' + color + '"></span>' +
+            '<span class="text-gray-200 font-medium">' + s.entity_name + '</span>' +
+          '</span>' +
+        '</td>' +
+        '<td class="py-2 pr-3 text-gray-400">' + (coldStart !== null ? coldStart.toFixed(1) + "%" : "—") + '</td>' +
+        '<td class="py-2 pr-3 text-gray-300">' + (latestDynVal !== null ? latestDynVal.toFixed(1) + "%" : "—") + '</td>' +
+        '<td class="py-2 pr-3 font-medium ' + deltaCls + '">' + deltaStr + '</td>' +
+        '<td class="py-2 pr-3 ' + trendCls + '">' + trendStr + '</td>' +
+        '<td class="py-2 text-gray-500">' + s.values.length + '</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  /* ---- Fetch data and redraw ---- */
+  function loadChart(metricKey) {
+    var url = "{% url 'dashboard:ai_threshold_evolution' %}";
+    if (metricKey) url += "?metric_key=" + encodeURIComponent(metricKey);
+
+    fetch(url)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        /* Populate metric dropdown once */
+        var select = document.getElementById("metric-select");
+        if (select.options.length <= 1 && data.metric_keys && data.metric_keys.length) {
+          select.innerHTML = "";
+          data.metric_keys.forEach(function (k) {
+            var opt = document.createElement("option");
+            opt.value = k;
+            opt.textContent = k.replace(/_/g, " ");
+            if (k === data.metric_key) opt.selected = true;
+            select.appendChild(opt);
+          });
+        } else {
+          select.value = data.metric_key;
+        }
+
+        /* Reset entity selections when switching to a different metric */
+        if (metricKey !== currentMetricKey) {
+          visibleEntities = {};
+          currentMetricKey = metricKey;
+        }
+
+        /* All entities for this metric default to visible */
+        (data.series || []).forEach(function (s) {
+          if (!(s.entity_id in visibleEntities)) visibleEntities[s.entity_id] = true;
+        });
+
+        currentSeries = data.series || [];
+        renderChart(currentSeries);
+        buildPills(currentSeries);
+        buildConvergenceTable(currentSeries, data.metric_key);
+
+        /* Re-apply active range after data reload */
+        if (activeRange && activeRange !== "all") applyRange(activeRange);
+      })
+      .catch(function (err) {
+        console.error("Threshold evolution fetch failed:", err);
+      });
+  }
+
+  /* ---- Wire metric dropdown ---- */
+  document.getElementById("metric-select").addEventListener("change", function () {
+    loadChart(this.value);
+  });
+
+  /* ---- Initial load ---- */
+  loadChart("github_stars");
+})();
+</script>
+
+{% endblock %}

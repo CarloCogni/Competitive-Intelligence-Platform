@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}Briefing Settings — BlockStream BI{% endblock %}
+
+{% block content %}
+
+<div class="mb-6">
+  <a href="{% url 'dashboard:briefing' %}"
+     class="text-xs text-gray-400 hover:text-white transition-colors">
+    &larr; Back to Briefing
+  </a>
+  <h1 class="text-xl font-bold text-white mt-3">Briefing Settings</h1>
+  <p class="text-xs text-gray-500 mt-0.5">Configure the AI briefing generator and email delivery.</p>
+</div>
+
+<div class="max-w-2xl mx-auto">
+  <form method="post"
+        action="{% url 'dashboard:briefing_settings' %}"
+        x-data="settingsForm('{{ config.llm_provider }}', '{{ config.ollama_model }}', '{{ config.groq_model }}')"
+        x-init="fetchModels()">
+    {% csrf_token %}
+
+    <!-- ── LLM Provider ── -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-4">
+      <h2 class="text-sm font-semibold text-gray-300 mb-4">LLM Provider</h2>
+
+      <div class="space-y-2">
+        {% for value, label in llm_provider_choices %}
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="radio" name="llm_provider"
+                 value="{{ value }}"
+                 x-model="provider"
+                 {% if config.llm_provider == value %}checked{% endif %}
+                 class="w-4 h-4 accent-brand-500" />
+          <span class="text-sm text-gray-300">{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <p class="text-xs text-gray-600 mt-3">
+        <strong>Auto</strong> tries Ollama first; if unreachable, falls back to Groq.
+      </p>
+    </div>
+
+    <!-- ── Ollama Model (hidden when provider == groq) ── -->
+    <div x-show="provider !== 'groq'" x-transition
+         class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-4">
+      <h2 class="text-sm font-semibold text-gray-300 mb-4">Ollama Model</h2>
+
+      <div class="space-y-3">
+        <label class="block text-xs text-gray-500 mb-1">Active model</label>
+
+        <template x-if="ollamaModels.length > 0">
+          <select name="ollama_model"
+                  class="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500">
+            <template x-for="m in ollamaModels" :key="m">
+              <option :value="m" :selected="m === ollamaCurrent" x-text="m"></option>
+            </template>
+          </select>
+        </template>
+
+        <template x-if="ollamaModels.length === 0">
+          <div>
+            <input type="text" name="ollama_model"
+                   :value="ollamaCurrent"
+                   class="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500"
+                   placeholder="e.g. gemma4:e4b" />
+            <p class="text-xs text-amber-600 mt-1" x-show="loaded">
+              Ollama not reachable — type a model name manually.
+            </p>
+            <p class="text-xs text-gray-600 mt-1" x-show="!loaded">
+              Fetching available models&hellip;
+            </p>
+          </div>
+        </template>
+
+        <p class="text-xs text-gray-600">
+          Lists models from your Ollama service (<code class="text-gray-500">ollama list</code>).
+          To add one: <code class="text-gray-500">ollama pull &lt;model&gt;</code>
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Groq Configuration (hidden when provider == ollama) ── -->
+    <div x-show="provider !== 'ollama'" x-transition
+         class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-4">
+      <h2 class="text-sm font-semibold text-gray-300 mb-4">Groq Configuration</h2>
+
+      <div class="space-y-4">
+        <div x-data="{ showKey: false }">
+          <label class="block text-xs text-gray-500 mb-1">API Key</label>
+          {% if groq_key_masked %}
+          <p class="text-xs text-green-500 mb-2">Key saved: <span class="font-mono text-gray-400">{{ groq_key_masked }}</span></p>
+          {% endif %}
+          <div class="relative">
+            <input :type="showKey ? 'text' : 'password'" name="groq_api_key"
+                   placeholder="{% if groq_key_masked %}Enter new key to replace current{% else %}gsk_... (from console.groq.com/keys){% endif %}"
+                   autocomplete="new-password"
+                   class="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 pr-10 focus:outline-none focus:border-brand-500" />
+            <button type="button" @click="showKey = !showKey"
+                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-300">
+              <!-- Eye open icon -->
+              <svg x-show="!showKey" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <!-- Eye closed icon -->
+              <svg x-show="showKey" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-gray-600 mt-1">
+            Stored in the database. Get a free key at
+            <a href="https://console.groq.com/keys" target="_blank" rel="noopener"
+               class="text-brand-500 hover:underline">console.groq.com/keys</a>.
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Model</label>
+          <template x-if="groqModels.length > 0">
+            <select name="groq_model"
+                    class="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500">
+              <template x-for="m in groqModels" :key="m">
+                <option :value="m" :selected="m === groqCurrent" x-text="m"></option>
+              </template>
+            </select>
+          </template>
+          <template x-if="groqModels.length === 0">
+            <input type="text" name="groq_model"
+                   :value="groqCurrent"
+                   placeholder="llama-3.3-70b-versatile"
+                   class="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500" />
+          </template>
+          <p class="text-xs text-gray-600 mt-1">
+            Free-tier models: llama-3.3-70b-versatile, llama-3.1-8b-instant, gemma2-9b-it, mixtral-8x7b-32768.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Data Window ── -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-4">
+      <h2 class="text-sm font-semibold text-gray-300 mb-4">Data Window</h2>
+
+      <div class="flex items-center gap-3">
+        <label class="text-xs text-gray-500 w-32 shrink-0">Period (days)</label>
+        <input type="number" name="period_days"
+               value="{{ config.period_days }}" min="1" max="90"
+               class="w-24 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500" />
+        <span class="text-xs text-gray-600">Days of alerts, news, and metrics fed to the LLM.</span>
+      </div>
+    </div>
+
+    <!-- ── Email Delivery ── -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
+      <h2 class="text-sm font-semibold text-gray-300 mb-4">Email Delivery</h2>
+
+      <div class="space-y-4">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" name="send_briefing_email"
+                 {% if config.send_briefing_email %}checked{% endif %}
+                 class="w-4 h-4 accent-brand-500" />
+          <span class="text-sm text-gray-300">Email the full AI briefing when generated</span>
+        </label>
+
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Recipients</label>
+          <textarea name="briefing_email_recipients"
+                    rows="3"
+                    placeholder="alice@example.com, bob@example.com"
+                    class="w-full bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500 resize-none">{{ config.briefing_email_recipients }}</textarea>
+          <p class="text-xs text-gray-600 mt-1">Comma-separated. Requires SMTP transport configured below.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SMTP Transport ── -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
+      <h2 class="text-sm font-semibold text-gray-300 mb-1">SMTP Transport</h2>
+      <p class="text-xs text-gray-600 mb-4">
+        Configures the outgoing mail server used for briefing delivery.
+        Leave <span class="text-gray-500">Host</span> blank to disable email entirely.
+        Password is only updated when a new value is submitted.
+      </p>
+
+      <div class="space-y-3">
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-gray-500 w-32 shrink-0">Host</label>
+          <input type="text" name="smtp_host"
+                 value="{{ email_cfg.smtp_host }}"
+                 placeholder="smtp.gmail.com"
+                 class="flex-1 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500" />
+        </div>
+
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-gray-500 w-32 shrink-0">Port</label>
+          <input type="number" name="smtp_port"
+                 value="{{ email_cfg.smtp_port }}"
+                 min="1" max="65535"
+                 class="w-28 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500" />
+          <span class="text-xs text-gray-600">587 = STARTTLS &nbsp;|&nbsp; 465 = SSL</span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-gray-500 w-32 shrink-0">Username</label>
+          <input type="text" name="smtp_user"
+                 value="{{ email_cfg.smtp_user }}"
+                 placeholder="you@gmail.com"
+                 class="flex-1 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500" />
+        </div>
+
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-gray-500 w-32 shrink-0">Password</label>
+          <input type="password" name="smtp_password"
+                 placeholder="Leave blank to keep current"
+                 autocomplete="new-password"
+                 class="flex-1 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500" />
+        </div>
+
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-gray-500 w-32 shrink-0">From address</label>
+          <input type="email" name="default_from_email"
+                 value="{{ email_cfg.default_from_email }}"
+                 class="flex-1 bg-gray-800 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500" />
+        </div>
+
+        <label class="flex items-center gap-3 cursor-pointer pt-1">
+          <input type="checkbox" name="use_tls"
+                 {% if email_cfg.use_tls %}checked{% endif %}
+                 class="w-4 h-4 accent-brand-500" />
+          <span class="text-sm text-gray-300">Use STARTTLS</span>
+          <span class="text-xs text-gray-600">(uncheck for SSL port 465 or local relay)</span>
+        </label>
+      </div>
+    </div>
+
+    <button type="submit"
+            class="px-4 py-2 text-sm rounded bg-brand-500 text-black font-semibold hover:bg-brand-600 transition-colors">
+      Save Settings
+    </button>
+  </form>
+</div>
+
+<script>
+  function settingsForm(provider, ollamaCurrent, groqCurrent) {
+    return {
+      provider: provider,
+      ollamaCurrent: ollamaCurrent,
+      ollamaModels: [],
+      groqCurrent: groqCurrent,
+      groqModels: [],
+      loaded: false,
+      fetchModels() {
+        fetch("{% url 'dashboard:briefing_models_json' %}")
+          .then(r => r.json())
+          .then(data => {
+            // Ollama models from live service
+            this.ollamaModels = data.models || [];
+            if (this.ollamaCurrent && !this.ollamaModels.includes(this.ollamaCurrent)) {
+              this.ollamaModels.unshift(this.ollamaCurrent);
+            }
+            // Groq models (static list from server)
+            this.groqModels = data.groq_models || [];
+            if (this.groqCurrent && !this.groqModels.includes(this.groqCurrent)) {
+              this.groqModels.unshift(this.groqCurrent);
+            }
+            this.loaded = true;
+          })
+          .catch(() => { this.loaded = true; });
+      }
+    };
+  }
+</script>
+
+{% endblock %}

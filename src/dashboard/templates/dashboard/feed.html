@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Feed — BlockStream BI{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb: Overview > Feed -->
+<nav class="text-xs text-gray-500 mb-4">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white">Dashboard</a>
+  <span class="mx-2">/</span>
+  <span class="text-gray-300">Feed</span>
+</nav>
+
+<!-- ── Page header + entity scope filter ─────────────────────────────────── -->
+<div class="flex flex-wrap items-center gap-2 mb-6">
+  <h1 class="text-xl font-bold text-white mr-2">Feed</h1>
+  <a href="{% url 'dashboard:feed' %}"
+     class="px-3 py-1 rounded text-xs {% if not current_entity %}bg-brand-500 text-white{% else %}bg-gray-800 text-gray-400 hover:bg-gray-700{% endif %}">
+    All
+  </a>
+  {% for entity in entities %}
+  <a href="?entity={{ entity.slug }}"
+     class="px-3 py-1 rounded text-xs {% if current_entity == entity.slug %}bg-brand-500 text-white{% else %}bg-gray-800 text-gray-400 hover:bg-gray-700{% endif %}">
+    {{ entity.name }}
+  </a>
+  {% endfor %}
+</div>
+
+<!-- ── Three-column grid ──────────────────────────────────────────────────── -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+     NEWS
+     ════════════════════════════════════════════════════════════════════════ -->
+  <div x-data="{ q: '' }" class="flex flex-col">
+
+    <!-- Column header -->
+    <div class="flex items-center justify-between mb-3 pb-2 border-b border-blue-900/50">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-blue-400 shadow shadow-blue-500/50"></span>
+        <h2 class="text-sm font-bold text-blue-300 uppercase tracking-widest">News</h2>
+      </div>
+      <span class="text-xs text-gray-500 tabular-nums">{{ news_items|length }}</span>
+    </div>
+
+    <!-- Search filter — searches article titles -->
+    <div class="relative mb-3">
+      <input x-model="q" type="text" placeholder="Search headlines…"
+             class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-300 placeholder-gray-600
+                    focus:outline-none focus:border-blue-600 transition-colors">
+      <button x-show="q" @click="q = ''"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-sm leading-none">×</button>
+    </div>
+
+    <!-- Items -->
+    <div class="space-y-2 overflow-y-auto" style="max-height: calc(100vh - 280px)">
+      {% if news_items %}
+        {% for item in news_items %}
+        {% with entity=item.entities.first %}
+        <!-- data-text is the searchable content — lowercased at render time -->
+        <div data-text="{{ item.title|lower }}"
+             x-show="!q || $el.dataset.text.includes(q.toLowerCase())"
+             class="group bg-gray-900 border border-blue-900/30 border-l-4 border-l-blue-500
+                    rounded-lg px-3 py-2.5 hover:border-blue-700/50 hover:bg-gray-800/50 transition-colors">
+          <div class="flex items-start justify-between gap-2 mb-1">
+            {% if entity %}
+            <a href="{% url 'dashboard:entity_detail' entity.slug %}"
+               class="text-xs text-blue-400 hover:text-blue-300 font-medium shrink-0">
+              {{ entity.name }}
+            </a>
+            {% endif %}
+            <span class="text-xs text-gray-600 tabular-nums shrink-0 ml-auto">
+              {{ item.published_at|date:"M j · g:i a" }}
+            </span>
+          </div>
+          <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer"
+             class="text-sm text-gray-100 group-hover:text-white leading-snug line-clamp-3 block">
+            {{ item.title }}
+          </a>
+          {% if item.source_name %}
+          <p class="text-xs text-gray-600 mt-1">{{ item.source_name }}</p>
+          {% endif %}
+        </div>
+        {% endwith %}
+        {% endfor %}
+      {% else %}
+        <p class="text-xs text-gray-600 italic">No news yet — run the news fetcher first.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+     RELEASES
+     ════════════════════════════════════════════════════════════════════════ -->
+  <div x-data="{ q: '' }" class="flex flex-col">
+
+    <div class="flex items-center justify-between mb-3 pb-2 border-b border-green-900/50">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-green-400 shadow shadow-green-500/50"></span>
+        <h2 class="text-sm font-bold text-green-300 uppercase tracking-widest">Releases</h2>
+      </div>
+      <span class="text-xs text-gray-500 tabular-nums">{{ release_items|length }}</span>
+    </div>
+
+    <div class="relative mb-3">
+      <input x-model="q" type="text" placeholder="Search releases…"
+             class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-300 placeholder-gray-600
+                    focus:outline-none focus:border-green-600 transition-colors">
+      <button x-show="q" @click="q = ''"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-sm leading-none">×</button>
+    </div>
+
+    <div class="space-y-2 overflow-y-auto" style="max-height: calc(100vh - 280px)">
+      {% if release_items %}
+        {% for alert in release_items %}
+        <!-- Searchable text: tag name + message -->
+        <div data-text="{{ alert.metadata.release_tag|lower|default:'' }} {{ alert.message|lower }}"
+             x-show="!q || $el.dataset.text.includes(q.toLowerCase())"
+             class="group bg-gray-900 border border-green-900/30 border-l-4 border-l-green-500
+                    rounded-lg px-3 py-2.5 hover:border-green-700/50 hover:bg-gray-800/50 transition-colors">
+          <div class="flex items-start justify-between gap-2 mb-1">
+            <a href="{% url 'dashboard:entity_detail' alert.entity.slug %}"
+               class="text-xs text-green-400 hover:text-green-300 font-medium shrink-0">
+              {{ alert.entity.name }}
+            </a>
+            <span class="text-xs text-gray-600 tabular-nums shrink-0 ml-auto">
+              {{ alert.created_at|date:"M j · g:i a" }}
+            </span>
+          </div>
+
+          {% if alert.alert_type == "new_release" %}
+            <!-- Show the tag as a clickable link to the GitHub release page -->
+            {% if alert.metadata.release_url %}
+            <a href="{{ alert.metadata.release_url }}" target="_blank" rel="noopener noreferrer"
+               class="inline-block font-mono text-sm text-green-300 group-hover:text-green-200 hover:underline">
+              {{ alert.metadata.release_tag }}
+            </a>
+            {% else %}
+            <span class="font-mono text-sm text-green-300">{{ alert.metadata.release_tag }}</span>
+            {% endif %}
+            {% if alert.metadata.previous_tag %}
+            <p class="text-xs text-gray-600 mt-0.5">
+              ← {{ alert.metadata.previous_tag }}
+            </p>
+            {% endif %}
+          {% else %}
+            <!-- NEW_REPO: show the message directly -->
+            <p class="text-sm text-gray-200 leading-snug">{{ alert.message }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-xs text-gray-600 italic">No releases detected yet.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+     ALERTS
+     ════════════════════════════════════════════════════════════════════════ -->
+  <div x-data="{ q: '' }" class="flex flex-col">
+
+    <div class="flex items-center justify-between mb-3 pb-2 border-b border-red-900/50">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-red-400 shadow shadow-red-500/50"></span>
+        <h2 class="text-sm font-bold text-red-300 uppercase tracking-widest">Alerts</h2>
+      </div>
+      <span class="text-xs text-gray-500 tabular-nums">{{ alert_items|length }}</span>
+    </div>
+
+    <div class="relative mb-3">
+      <input x-model="q" type="text" placeholder="Search alerts…"
+             class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-300 placeholder-gray-600
+                    focus:outline-none focus:border-red-700 transition-colors">
+      <button x-show="q" @click="q = ''"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-sm leading-none">×</button>
+    </div>
+
+    <div class="space-y-2 overflow-y-auto" style="max-height: calc(100vh - 280px)">
+      {% if alert_items %}
+        {% for alert in alert_items %}
+        {% with sev=alert.metadata.severity %}
+        <div data-text="{{ alert.message|lower }}"
+             x-show="!q || $el.dataset.text.includes(q.toLowerCase())"
+             class="group bg-gray-900 rounded-lg px-3 py-2.5 transition-colors
+                    {% if sev == 'HIGH' %}border border-red-800/70 border-l-4 border-l-red-500 hover:border-red-700
+                    {% elif sev == 'MEDIUM' %}border border-orange-900/60 border-l-4 border-l-orange-500 hover:border-orange-800
+                    {% else %}border border-gray-700/60 border-l-4 border-l-yellow-600 hover:border-gray-600{% endif %}">
+          <div class="flex items-start justify-between gap-2 mb-1">
+            <a href="{% url 'dashboard:entity_detail' alert.entity.slug %}"
+               class="text-xs font-medium shrink-0
+                      {% if sev == 'HIGH' %}text-red-400 hover:text-red-300
+                      {% elif sev == 'MEDIUM' %}text-orange-400 hover:text-orange-300
+                      {% else %}text-yellow-500 hover:text-yellow-400{% endif %}">
+              {{ alert.entity.name }}
+            </a>
+            <div class="flex items-center gap-2 shrink-0 ml-auto">
+              {% if sev %}
+              <span class="text-xs font-bold tabular-nums
+                           {% if sev == 'HIGH' %}text-red-500
+                           {% elif sev == 'MEDIUM' %}text-orange-400
+                           {% else %}text-yellow-600{% endif %}">
+                {{ sev }}
+              </span>
+              {% endif %}
+              <span class="text-xs text-gray-600 tabular-nums">
+                {{ alert.created_at|date:"M j · g:i a" }}
+              </span>
+            </div>
+          </div>
+          <p class="text-sm text-gray-200 leading-snug group-hover:text-white">{{ alert.message }}</p>
+          {% if alert.metadata.metric_key %}
+          <p class="text-xs text-gray-600 mt-0.5 font-mono">{{ alert.metadata.metric_key }}</p>
+          {% endif %}
+        </div>
+        {% endwith %}
+        {% endfor %}
+      {% else %}
+        <p class="text-xs text-gray-600 italic">No alerts fired yet.</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,4 @@
+<!-- partials/mark_seen_response.html -->
+<!-- Empty body — HTMX swaps the card's outerHTML to nothing (card disappears). -->
+<!-- OOB span updates the navbar badge without a full page reload. -->
+<span id="nav-alert-badge" hx-swap-oob="true">{% if unseen_count %}<span class="ml-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">{{ unseen_count }}</span>{% endif %}</span>

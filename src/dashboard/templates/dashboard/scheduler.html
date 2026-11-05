@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Scheduler — BlockStream BI{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb: Overview > Scheduler -->
+<nav class="text-xs text-gray-500 mb-4">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white">Dashboard</a>
+  <span class="mx-2">/</span>
+  <span class="text-gray-300">Scheduler</span>
+</nav>
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-xl font-bold text-white">Scheduler</h1>
+    <p class="text-xs text-gray-500 mt-0.5">48-hour run history · auto-refreshes every 30s</p>
+  </div>
+  <div x-data="{ lastUpdated: new Date() }"
+       x-init="setInterval(() => lastUpdated = new Date(), 30000)"
+       class="text-xs text-gray-600">
+    Updated <span x-text="lastUpdated.toLocaleTimeString()"></span>
+  </div>
+</div>
+
+<!-- HTMX-polled section: summary cards + run tables -->
+<div id="scheduler-runs"
+     hx-get="{% url 'dashboard:scheduler_status' %}"
+     hx-trigger="every 30s"
+     hx-swap="innerHTML">
+  {% include "partials/scheduler_runs.html" %}
+</div>
+
+<!-- Timeline charts (Chart.js, refreshed every 60s via JS) -->
+<div class="mt-8">
+  <h2 class="text-sm font-semibold text-white mb-4">Run Timeline — last 48h</h2>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    {% for job in job_summaries %}
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+      {% include "partials/chart_toolbar.html" with canvas_id="chart-"|add:job.job_id filename=job.display_name %}
+      <h3 class="text-xs font-medium text-gray-400 mb-3">{{ job.display_name }}</h3>
+      <div style="height:120px;position:relative">
+        <canvas id="chart-{{ job.job_id }}"></canvas>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+(function () {
+  // Chart instances keyed by job_id — kept so we can do in-place data updates
+  const charts = {};
+
+  // Colour palette matching the status badge scheme
+  const COLORS = {
+    success: { bg: "rgba(34,197,94,0.6)",  border: "rgba(34,197,94,1)" },
+    partial: { bg: "rgba(245,158,11,0.6)", border: "rgba(245,158,11,1)" },
+    failed:  { bg: "rgba(239,68,68,0.6)",  border: "rgba(239,68,68,1)" },
+  };
+
+  function initCharts(data) {
+    data.datasets.forEach(function (ds) {
+      const canvas = document.getElementById("chart-" + ds.job_id);
+      if (!canvas) return;
+
+      // If chart already exists, update data in-place (avoids canvas teardown)
+      if (charts[ds.job_id]) {
+        const c = charts[ds.job_id];
+        c.data.labels = data.labels;
+        c.data.datasets[0].data = ds.success;
+        c.data.datasets[1].data = ds.partial;
+        c.data.datasets[2].data = ds.failed;
+        c.update("none");
+        return;
+      }
+
+      charts[ds.job_id] = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels: data.labels,
+          datasets: [
+            {
+              label: "Success",
+              data: ds.success,
+              backgroundColor: COLORS.success.bg,
+              borderColor: COLORS.success.border,
+              borderWidth: 0,
+            },
+            {
+              label: "Partial",
+              data: ds.partial,
+              backgroundColor: COLORS.partial.bg,
+              borderColor: COLORS.partial.border,
+              borderWidth: 0,
+            },
+            {
+              label: "Failed",
+              data: ds.failed,
+              backgroundColor: COLORS.failed.bg,
+              borderColor: COLORS.failed.border,
+              borderWidth: 0,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: "bottom",
+              labels: {
+                color: "#9ca3af",
+                font: { size: 10 },
+                boxWidth: 10,
+                padding: 8,
+              },
+            },
+            tooltip: {
+              callbacks: {
+                title: function (items) {
+                  // Show only hour label (trim minutes) to save space
+                  return items[0].label.slice(0, 13);
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              stacked: true,
+              ticks: {
+                color: "#6b7280",
+                font: { size: 9 },
+                maxRotation: 0,
+                // Show one label every 6 hours to avoid crowding
+                callback: function (val, idx) {
+                  return idx % 6 === 0 ? this.getLabelForValue(val).slice(5, 13) : "";
+                },
+              },
+              grid: { color: "#1f2937" },
+            },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              ticks: {
+                color: "#6b7280",
+                font: { size: 9 },
+                stepSize: 1,
+                precision: 0,
+              },
+              grid: { color: "#1f2937" },
+            },
+          },
+        },
+      });
+    });
+  }
+
+  function fetchAndRender() {
+    fetch("{% url 'dashboard:scheduler_chart_data' %}")
+      .then(function (r) { return r.json(); })
+      .then(initCharts)
+      .catch(function (e) { console.warn("Scheduler chart fetch failed:", e); });
+  }
+
+  // Initial load + refresh every 60s
+  fetchAndRender();
+  setInterval(fetchAndRender, 60000);
+})();
+</script>
+
+{% endblock %}

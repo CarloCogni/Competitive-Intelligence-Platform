@@ -1,0 +1,638 @@
+{% extends "base.html" %}
+{% load dashboard_tags %}
+{% block title %}Dashboard — BlockStream BI{% endblock %}
+
+{% block content %}
+<div x-data="mainDashboard()" x-init="init()">
+
+  <!-- Page heading -->
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold text-white">Dashboard</h1>
+    <span class="text-xs text-gray-500">Data as of last fetch cycle</span>
+  </div>
+
+  <!-- ROW 0: KPI Ticker Strip -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+
+    <!-- BTC Price (client-side fetch) -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5">
+      <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">BTC Price</p>
+      <p class="text-lg font-bold text-amber-400" id="btc-price">—</p>
+      <p class="text-[10px] mt-0.5" id="btc-change-wrap">
+        <span id="btc-change" class="text-gray-600">loading…</span>
+      </p>
+    </div>
+
+    <!-- Hashrate (client-side fetch) -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5">
+      <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Hashrate</p>
+      <p class="text-lg font-bold text-cyan-400" id="hashrate">—</p>
+      <p class="text-[10px] text-gray-600 mt-0.5">Bitcoin network</p>
+    </div>
+
+    <!-- Tracked Entities -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5">
+      <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Tracked</p>
+      <p class="text-lg font-bold text-white">{{ total_count }}</p>
+      <p class="text-[10px] text-gray-600 mt-0.5">
+        <span class="text-brand-500">{{ primary_count }}</span> own ·
+        <span class="text-gray-400">{{ competitor_count }}</span> rivals
+      </p>
+    </div>
+
+    <!-- Unseen Alerts with severity breakdown -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5">
+      <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Alerts</p>
+      <p class="text-lg font-bold {% if unseen_alert_count %}text-red-400{% else %}text-gray-600{% endif %}">
+        {{ unseen_alert_count }}
+      </p>
+      <p class="text-[10px] mt-0.5">
+        {% if unseen_alert_count %}
+          <span class="text-red-400">{{ severity_high }}H</span>
+          <span class="text-orange-400">{{ severity_medium }}M</span>
+          <span class="text-blue-400">{{ severity_low }}L</span>
+          <a href="{% url 'dashboard:feed' %}" class="text-gray-500 hover:text-white ml-1">→ feed</a>
+        {% else %}
+          <span class="text-gray-600">all clear</span>
+        {% endif %}
+      </p>
+    </div>
+
+    <!-- News 7d -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5">
+      <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">News (7d)</p>
+      <p class="text-lg font-bold text-blue-400">{{ news_7d }}</p>
+      <p class="text-[10px] mt-0.5"><a href="{% url 'dashboard:feed' %}" class="text-gray-500 hover:text-white">articles → feed</a></p>
+    </div>
+
+    <!-- Releases 7d -->
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-2.5">
+      <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Releases (7d)</p>
+      <p class="text-lg font-bold text-green-400">{{ releases_7d }}</p>
+      <p class="text-[10px] mt-0.5"><a href="{% url 'dashboard:feed' %}" class="text-gray-500 hover:text-white">releases → feed</a></p>
+    </div>
+
+  </div>
+
+  <!-- ROW 1: Two-panel layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
+
+    <!-- Left panel (8 cols): Vertical Bar + Ranking + Radar -->
+    <div class="lg:col-span-8 space-y-4">
+
+      <!-- Vertical Stacked Bar Chart -->
+      <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+        {% include "partials/chart_toolbar.html" with canvas_id="exec-vertical-bar" filename="vertical-comparison" %}
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Blockstream vs Competitors by Vertical
+            </h2>
+            <button @click="$dispatch('open-help', {
+                      title: 'Vertical Comparison',
+                      body: '<p class=\'mb-3\'>Compares the aggregate metric totals for Blockstream products vs all competitors, grouped by market vertical.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-brand-500 font-semibold\'>Orange segments</span> = sum of Blockstream product values in that vertical.</li><li><span class=\'text-white font-semibold\'>Gray segments</span> = sum of all competitor values.</li><li><span class=\'text-white font-semibold\'>Reading it:</span> A vertical where orange is a small fraction signals a crowded, competitor-dominated market.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Default metric: GitHub Stars. Data from the latest fetch cycle.</p>'
+                    })"
+                    class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                    title="What is this chart?">?</button>
+          </div>
+          <span class="text-[10px] text-gray-600" x-text="verticalBarLabel"></span>
+        </div>
+        <div style="height:240px;position:relative">
+          <canvas id="exec-vertical-bar"></canvas>
+        </div>
+      </div>
+
+      <!-- Ranking Bar Chart (from overview) -->
+      <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+        {% include "partials/chart_toolbar.html" with canvas_id="ranking-bar-chart" filename="entity-ranking" %}
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Entity Ranking — <span x-text="rankingLabel">Stars</span>
+            </h2>
+            <button @click="$dispatch('open-help', {
+                      title: 'Entity Ranking',
+                      body: '<p class=\'mb-3\'>Ranks every tracked entity by the selected metric. Use the sort headers in the entity table below to switch metrics — the chart updates automatically.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-brand-500 font-semibold\'>Orange bars</span> = Blockstream products. <span class=\'text-white font-semibold\'>Gray bars</span> = competitors.</li><li><span class=\'text-white font-semibold\'>Click</span> any bar or label to jump to that entity detail page.</li><li><span class=\'text-white font-semibold\'>Auto-refresh:</span> Updates every 60 seconds in the background.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Data source: latest fetch cycle per entity.</p>'
+                    })"
+                    class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                    title="What is this chart?">?</button>
+          </div>
+          <span class="text-xs text-gray-500 flex items-center gap-1.5">
+            <span :class="rankingLoading ? 'animate-spin' : ''" class="inline-block">↻</span>
+            <span x-text="rankingLoading ? 'updating…' : 'refresh in ' + rankingCountdown + 's'"></span>
+          </span>
+        </div>
+        <div class="relative" style="height:420px">
+          <canvas id="ranking-bar-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Capability Radar Chart -->
+      <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+        {% include "partials/chart_toolbar.html" with canvas_id="exec-radar" filename="competitive-radar" %}
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Competitive Position — All Metrics
+            </h2>
+            <button @click="$dispatch('open-help', {
+                      title: 'Competitive Position Radar',
+                      body: '<p class=\'mb-3\'>Spider chart comparing the average Blockstream product score vs the average competitor score across 8 key metrics. All values normalized to 0–100 (100 = best performer).</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-brand-500 font-semibold\'>Orange area</span> = Blockstream average across all primary products.</li><li><span class=\'text-blue-400 font-semibold\'>Blue area</span> = competitor average.</li><li><span class=\'text-white font-semibold\'>Reading it:</span> Where orange extends beyond blue, Blockstream leads. Where blue protrudes, competitors have the edge.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Metrics: Stars, Forks, Commits 30d, Contributors, App Rating, Twitter Engagement, Reddit Mentions, News Articles.</p>'
+                    })"
+                    class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                    title="What is this chart?">?</button>
+          </div>
+          <div class="flex items-center gap-3 text-[10px]">
+            <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-brand-500"></span> Blockstream</span>
+            <span class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span> Competitors</span>
+          </div>
+        </div>
+        <div style="height:280px;position:relative">
+          <canvas id="exec-radar"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right panel (4 cols): Donut + News Volume + Top Movers -->
+    <div class="lg:col-span-4 space-y-4">
+
+      <!-- Alert Severity Donut -->
+      <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+        {% include "partials/chart_toolbar.html" with canvas_id="exec-severity" filename="alert-severity" %}
+        <div class="flex items-center gap-2 mb-3">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Alert Severity — Unseen
+          </h2>
+          <button @click="$dispatch('open-help', {
+                    title: 'Alert Severity Distribution',
+                    body: '<p class=\'mb-3\'>Breakdown of all unseen (not yet dismissed) alerts by severity level. Matches the count in the Alerts KPI card above.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-red-400 font-semibold\'>High (red):</span> Metric change exceeds 5× the configured threshold — investigate immediately.</li><li><span class=\'text-orange-400 font-semibold\'>Medium (orange):</span> 2–5× threshold — worth monitoring.</li><li><span class=\'text-blue-400 font-semibold\'>Low (blue):</span> Threshold crossed but within normal volatility.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Center number = total alerts. Click Alerts in the navbar for the full list.</p>'
+                  })"
+                  class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                  title="What is this chart?">?</button>
+        </div>
+        <div style="height:160px;position:relative">
+          <canvas id="exec-severity"></canvas>
+        </div>
+      </div>
+
+      <!-- News Volume Area Chart -->
+      <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 relative group">
+        {% include "partials/chart_toolbar.html" with canvas_id="exec-news-volume" filename="news-volume" %}
+        <div class="flex items-center gap-2 mb-3">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            News Volume — 30d
+          </h2>
+          <button @click="$dispatch('open-help', {
+                    title: 'News Volume',
+                    body: '<p class=\'mb-3\'>Daily count of news articles mentioning any tracked entity over the last 30 days.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-white font-semibold\'>Spikes</span> indicate media events — product launches, partnerships, vulnerabilities, or controversy.</li><li><span class=\'text-white font-semibold\'>Cross-reference:</span> Compare spikes against the competitive trend charts to see if media attention drives metric changes.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Source: Google News RSS, fetched every 2 hours.</p>'
+                  })"
+                  class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                  title="What is this chart?">?</button>
+        </div>
+        <div style="height:110px;position:relative">
+          <canvas id="exec-news-volume"></canvas>
+        </div>
+      </div>
+
+      <!-- Top 5 Movers -->
+      <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Top Movers — 7d
+          </h2>
+          <button @click="$dispatch('open-help', {
+                    title: 'Top Movers',
+                    body: '<p class=\'mb-3\'>The 5 entities with the largest percentage change in any key metric over the past 7 days.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-green-400 font-semibold\'>Green ▲</span> = positive change (growth). <span class=\'text-red-400 font-semibold\'>Red ▼</span> = decline.</li><li><span class=\'text-brand-500 font-semibold\'>Orange names</span> = Blockstream products. White names = competitors.</li><li><span class=\'text-white font-semibold\'>Click</span> any row to jump to that entity detail page.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Metrics checked: Stars, Forks, Twitter Engagement, Reddit Mentions, News Articles.</p>'
+                  })"
+                  class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                  title="What is this chart?">?</button>
+        </div>
+        <div id="exec-movers-body">
+          <p class="text-gray-600 text-xs text-center py-4">Loading…</p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ROW 2: Competitive Trend Wall — 3x2 mini-chart grid -->
+  <div class="mb-4">
+    <div class="flex items-center gap-2 mb-3">
+      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        Competitive Trends — Primary vs Top Competitors (30d)
+      </h2>
+      <button @click="$dispatch('open-help', {
+                title: 'Competitive Trends',
+                body: '<p class=\'mb-3\'>Six key metrics plotted over 30 days. Each chart shows all Blockstream products (orange lines) alongside the top 3 competitors by that metric (gray lines).</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-brand-500 font-semibold\'>Thicker orange lines</span> = Blockstream products.</li><li><span class=\'text-white font-semibold\'>Thinner gray lines</span> = top 3 competitors (by latest value).</li><li><span class=\'text-white font-semibold\'>Convergence:</span> When gray lines approach orange, a competitor is gaining ground.</li><li><span class=\'text-white font-semibold\'>Divergence:</span> Growing gap means Blockstream is pulling ahead (or falling behind).</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Hover for exact values. Legend at the bottom of each chart identifies entities.</p>'
+              })"
+              class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+              title="What is this chart?">?</button>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <template x-for="key in trendKeys" :key="key">
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-3 relative group">
+          <!-- chart toolbar — canvas_id resolved at click time via Alpine binding -->
+          <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
+            <button :onclick="'ChartToolbar.export(\'exec-trend-' + key + '\', \'' + (trendLabels[key] || key) + '\')'"
+                    class="p-1.5 rounded bg-gray-800/80 border border-gray-700/60 text-gray-400 hover:text-brand-500 hover:border-brand-500/40 backdrop-blur-sm transition-colors"
+                    title="Download as PNG">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+            </button>
+            <button onclick="ChartToolbar.fullscreen(this)"
+                    class="p-1.5 rounded bg-gray-800/80 border border-gray-700/60 text-gray-400 hover:text-brand-500 hover:border-brand-500/40 backdrop-blur-sm transition-colors"
+                    title="Fullscreen">
+              <svg class="chart-toolbar-expand w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/>
+              </svg>
+              <svg class="chart-toolbar-compress w-3.5 h-3.5 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>
+              </svg>
+            </button>
+          </div>
+          <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2" x-text="trendLabels[key] || key"></p>
+          <div style="height:140px;position:relative">
+            <canvas :id="'exec-trend-' + key"></canvas>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- ROW 3: Entity Overview Table -->
+  <div class="mb-4">
+    <div class="flex items-center gap-2 mb-3">
+      <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Entity Overview</h2>
+      <button @click="$dispatch('open-help', {
+                title: 'Entity Overview Table',
+                body: '<p class=\'mb-3\'>Sortable table of all tracked entities with their latest metric values.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-white font-semibold\'>Sort:</span> Click any column header to sort and update the ranking chart above.</li><li><span class=\'text-white font-semibold\'>Filter:</span> Use the vertical buttons to narrow by market category, or type a name in the search box.</li><li><span class=\'text-white font-semibold\'>Navigate:</span> Click an entity name to open its detail page with full metric history and sparklines.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Respects your Watchlist / All scope toggle in the navbar.</p>'
+              })"
+              class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+              title="What is this table?">?</button>
+    </div>
+
+    <!-- Vertical filter + name search -->
+    <div class="mb-3">
+      <div class="flex flex-wrap items-center gap-2 mb-2">
+        <span class="text-[10px] text-gray-500 mr-1">Filter:</span>
+        <button
+          @click="currentVertical = ''"
+          :class="currentVertical === '' ? 'bg-brand-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+          class="px-2.5 py-0.5 rounded text-[10px] transition-colors">
+          All
+        </button>
+        {% for v in verticals %}
+        <button
+          @click="currentVertical = '{{ v.slug }}'"
+          :class="currentVertical === '{{ v.slug }}' ? 'bg-brand-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'"
+          class="px-2.5 py-0.5 rounded text-[10px] transition-colors">
+          {{ v.name }}
+        </button>
+        {% endfor %}
+      </div>
+      <input
+        type="text"
+        x-model="searchQuery"
+        placeholder="Filter by name…"
+        class="w-full max-w-xs rounded border border-gray-700 bg-gray-900 px-3 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+      >
+    </div>
+
+    <!-- Entity table — HTMX swap target -->
+    <div id="entity-table"
+         hx-get="{% url 'dashboard:partial_entity_table' %}"
+         hx-trigger="load"
+         hx-vals='{"sort": "{{ current_sort }}"}'
+         hx-swap="outerHTML">
+      {% include "partials/entity_table.html" %}
+    </div>
+  </div>
+
+
+</div>
+
+{{ trend_keys|json_script:"exec-trend-keys" }}
+{{ trend_labels|json_script:"exec-trend-labels" }}
+
+<script>
+function mainDashboard() {
+  // Chart instances stored outside Alpine reactive scope
+  const RANKING_INTERVAL = 60;
+  let verticalBarChart = null;
+  let rankingChart = null;
+  let currentSlugs = [];
+  let radarChart = null;
+  let severityChart = null;
+  let newsVolumeChart = null;
+  let trendCharts = {};
+
+  return {
+    verticalBarLabel: '',
+    rankingLabel: 'Stars',
+    rankingKey: '{{ current_sort }}' === 'name' ? 'github_stars' : '{{ current_sort }}',
+    rankingLoading: false,
+    rankingCountdown: RANKING_INTERVAL,
+    trendKeys: JSON.parse(document.getElementById('exec-trend-keys').textContent),
+    trendLabels: JSON.parse(document.getElementById('exec-trend-labels').textContent),
+    currentVertical: '',
+    searchQuery: '',
+
+    init() {
+      this.loadBtcData();
+      this.loadHashrate();
+      this.loadVerticalBars();
+      this.loadRanking();
+      this.loadRadar();
+      this.loadSeverity();
+      this.loadNewsVolume();
+      this.loadMovers();
+      this.$nextTick(() => {
+        this.trendKeys.forEach(key => this.loadTrend(key));
+      });
+
+      // Ranking chart auto-refresh countdown
+      setInterval(() => {
+        this.rankingCountdown -= 1;
+        if (this.rankingCountdown <= 0) {
+          this.rankingCountdown = RANKING_INTERVAL;
+          this.loadRanking();
+        }
+      }, 1000);
+
+      // Re-sync ranking when user clicks a sort column (HTMX swaps #entity-table)
+      document.body.addEventListener('htmx:afterSwap', (e) => {
+        if (e.detail.target && e.detail.target.id === 'entity-table') {
+          const params = new URLSearchParams(
+            e.detail.requestConfig && e.detail.requestConfig.parameters || {}
+          );
+          const key = params.get('sort');
+          if (key && key !== 'name') {
+            this.rankingKey = key;
+            this.rankingCountdown = RANKING_INTERVAL;
+            this.loadRanking();
+          }
+        }
+      });
+    },
+
+    // --- BTC Price (CoinGecko) ---
+    loadBtcData() {
+      const cached = sessionStorage.getItem('btc_data');
+      const cachedAt = sessionStorage.getItem('btc_data_ts');
+      if (cached && cachedAt && Date.now() - parseInt(cachedAt) < 60000) {
+        this.renderBtc(JSON.parse(cached));
+        return;
+      }
+      fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true')
+        .then(r => r.json())
+        .then(d => {
+          sessionStorage.setItem('btc_data', JSON.stringify(d));
+          sessionStorage.setItem('btc_data_ts', Date.now().toString());
+          this.renderBtc(d);
+        })
+        .catch(() => {
+          document.getElementById('btc-price').textContent = 'N/A';
+          document.getElementById('btc-change').textContent = 'API unavailable';
+        });
+    },
+    renderBtc(d) {
+      const price = d.bitcoin.usd;
+      const change = d.bitcoin.usd_24h_change;
+      document.getElementById('btc-price').textContent = '$' + price.toLocaleString(undefined, {maximumFractionDigits: 0});
+      const changeEl = document.getElementById('btc-change');
+      const sign = change >= 0 ? '+' : '';
+      changeEl.textContent = sign + change.toFixed(1) + '% (24h)';
+      changeEl.className = change >= 0 ? 'text-green-400' : 'text-red-400';
+    },
+
+    // --- Hashrate (Mempool.space) ---
+    loadHashrate() {
+      fetch('https://mempool.space/api/v1/mining/hashrate/1w')
+        .then(r => r.json())
+        .then(d => {
+          if (d.currentHashrate) {
+            const eh = d.currentHashrate / 1e18;
+            document.getElementById('hashrate').textContent = eh.toFixed(1) + ' EH/s';
+          } else if (d.hashrates && d.hashrates.length) {
+            const latest = d.hashrates[d.hashrates.length - 1];
+            const eh = latest.avgHashrate / 1e18;
+            document.getElementById('hashrate').textContent = eh.toFixed(1) + ' EH/s';
+          }
+        })
+        .catch(() => {
+          document.getElementById('hashrate').textContent = 'N/A';
+        });
+    },
+
+    // --- Vertical Stacked Bar ---
+    loadVerticalBars() {
+      fetch('{% url "dashboard:partial_exec_vertical_bars" %}')
+        .then(r => r.json())
+        .then(d => { this.verticalBarLabel = d.label; this.renderVerticalBars(d); })
+        .catch(() => {});
+    },
+    renderVerticalBars(d) {
+      const canvas = document.getElementById('exec-vertical-bar');
+      if (!canvas || !d.verticals.length) return;
+      if (verticalBarChart) { verticalBarChart.destroy(); }
+      verticalBarChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: d.verticals,
+          datasets: [
+            { label: 'Blockstream', data: d.primary, backgroundColor: '#f7931a', borderRadius: 2 },
+            { label: 'Competitors', data: d.competitor, backgroundColor: '#4b5563', borderRadius: 2 }
+          ]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'top', labels: { color: '#9ca3af', font: { size: 10 }, boxWidth: 12, padding: 15 } },
+            tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.parsed.x.toLocaleString() } }
+          },
+          scales: {
+            x: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
+            y: { stacked: true, grid: { display: false }, ticks: { color: '#e5e7eb', font: { size: 10 } } }
+          }
+        }
+      });
+    },
+
+    // --- Entity Ranking Bar Chart ---
+    loadRanking() {
+      this.rankingLoading = true;
+      fetch('{% url "dashboard:partial_ranking_chart" %}?key=' + this.rankingKey)
+        .then(r => r.json())
+        .then(d => { currentSlugs = d.slugs; this.rankingLabel = d.label; this.renderRanking(d); })
+        .catch(() => {})
+        .finally(() => { this.rankingLoading = false; });
+    },
+    renderRanking(d) {
+      const canvas = document.getElementById('ranking-bar-chart');
+      if (!canvas) return;
+      if (!d.values.length) {
+        canvas.parentElement.innerHTML = '<p class="text-gray-600 text-sm text-center pt-16">No data for this metric yet.</p>';
+        return;
+      }
+      if (rankingChart) {
+        rankingChart.data.labels = d.labels;
+        rankingChart.data.datasets[0].data = d.values;
+        rankingChart.data.datasets[0].backgroundColor = d.colors;
+        rankingChart.update('active');
+        return;
+      }
+      rankingChart = new Chart(canvas, {
+        type: 'bar',
+        data: { labels: d.labels, datasets: [{ data: d.values, backgroundColor: d.colors, borderRadius: 3, borderSkipped: false }] },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.x.toLocaleString() } } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { size: 11 } } },
+            y: { grid: { display: false }, ticks: { color: '#e5e7eb', font: { size: 11 }, autoSkip: false } }
+          }
+        }
+      });
+      // Click bar or y-axis label → entity detail
+      canvas.addEventListener('click', (e) => {
+        if (!rankingChart) return;
+        const hits = rankingChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+        if (hits.length) { const slug = currentSlugs[hits[0].index]; if (slug) window.location.href = '/entity/' + slug + '/'; return; }
+        const yAxis = rankingChart.scales.y, rect = canvas.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
+        if (x <= yAxis.left) { for (let i = 0; i < rankingChart.data.labels.length; i++) { if (Math.abs(y - yAxis.getPixelForTick(i)) <= 12) { const slug = currentSlugs[i]; if (slug) window.location.href = '/entity/' + slug + '/'; return; } } }
+      });
+      canvas.addEventListener('mousemove', (e) => {
+        if (!rankingChart) return;
+        const hits = rankingChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+        if (hits.length) { canvas.style.cursor = 'pointer'; return; }
+        const yAxis = rankingChart.scales.y, rect = canvas.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
+        if (x <= yAxis.left) { for (let i = 0; i < rankingChart.data.labels.length; i++) { if (Math.abs(y - yAxis.getPixelForTick(i)) <= 12) { canvas.style.cursor = 'pointer'; return; } } }
+        canvas.style.cursor = 'default';
+      });
+    },
+
+    // --- Capability Radar ---
+    loadRadar() {
+      fetch('{% url "dashboard:partial_exec_radar" %}')
+        .then(r => r.json())
+        .then(d => this.renderRadar(d))
+        .catch(() => {});
+    },
+    renderRadar(d) {
+      const canvas = document.getElementById('exec-radar');
+      if (!canvas || !d.labels.length) return;
+      if (radarChart) { radarChart.destroy(); }
+      radarChart = new Chart(canvas, {
+        type: 'radar',
+        data: {
+          labels: d.labels,
+          datasets: [
+            { label: 'Blockstream', data: d.primary, borderColor: '#f7931a', backgroundColor: 'rgba(247,147,26,0.15)', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#f7931a' },
+            { label: 'Competitors', data: d.competitor, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.10)', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#60a5fa' }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { r: { beginAtZero: true, max: 100, ticks: { display: false, stepSize: 25 }, grid: { color: 'rgba(255,255,255,0.08)' }, angleLines: { color: 'rgba(255,255,255,0.08)' }, pointLabels: { color: '#d1d5db', font: { size: 10 } } } }
+        }
+      });
+    },
+
+    // --- Alert Severity Donut ---
+    loadSeverity() {
+      fetch('{% url "dashboard:partial_exec_severity" %}')
+        .then(r => r.json())
+        .then(d => this.renderSeverity(d))
+        .catch(() => {});
+    },
+    renderSeverity(d) {
+      const canvas = document.getElementById('exec-severity');
+      if (!canvas) return;
+      const total = d.high + d.medium + d.low;
+      if (severityChart) { severityChart.destroy(); }
+      severityChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: { labels: ['High', 'Medium', 'Low'], datasets: [{ data: [d.high, d.medium, d.low], backgroundColor: ['#dc2626', '#d97706', '#3b82f6'], borderWidth: 0 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '65%',
+          plugins: { legend: { display: true, position: 'bottom', labels: { color: '#9ca3af', font: { size: 9 }, boxWidth: 10, padding: 10 } }, tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.parsed } } }
+        },
+        plugins: [{ id: 'centerText', afterDraw(chart) { const { ctx, chartArea: { width, height, top, left } } = chart; ctx.save(); ctx.fillStyle = '#e5e7eb'; ctx.font = 'bold 20px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(total, left + width / 2, top + height / 2 - 6); ctx.font = '9px monospace'; ctx.fillStyle = '#6b7280'; ctx.fillText('alerts', left + width / 2, top + height / 2 + 12); ctx.restore(); } }]
+      });
+    },
+
+    // --- News Volume Area ---
+    loadNewsVolume() {
+      fetch('{% url "dashboard:partial_exec_news_volume" %}')
+        .then(r => r.json())
+        .then(d => this.renderNewsVolume(d))
+        .catch(() => {});
+    },
+    renderNewsVolume(d) {
+      const canvas = document.getElementById('exec-news-volume');
+      if (!canvas || !d.labels.length) return;
+      if (newsVolumeChart) { newsVolumeChart.destroy(); }
+      newsVolumeChart = new Chart(canvas, {
+        type: 'line',
+        data: { labels: d.labels, datasets: [{ data: d.values, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => ' ' + ctx.parsed.y + ' articles' } } },
+          scales: { x: { ticks: { color: '#6b7280', font: { size: 8 }, maxTicksLimit: 5, maxRotation: 0 }, grid: { display: false } }, y: { beginAtZero: true, ticks: { color: '#6b7280', font: { size: 8 }, maxTicksLimit: 3 }, grid: { color: 'rgba(255,255,255,0.04)' } } }
+        }
+      });
+    },
+
+    // --- Top Movers ---
+    loadMovers() {
+      fetch('{% url "dashboard:partial_exec_movers" %}')
+        .then(r => r.json())
+        .then(d => this.renderMovers(d))
+        .catch(() => {});
+    },
+    renderMovers(d) {
+      const body = document.getElementById('exec-movers-body');
+      if (!body) return;
+      if (!d.movers || !d.movers.length) { body.innerHTML = '<p class="text-gray-600 text-xs text-center py-4">No significant changes this week.</p>'; return; }
+      let html = '<div class="space-y-2">';
+      d.movers.forEach(m => {
+        const color = m.delta_pct >= 0 ? 'text-green-400' : 'text-red-400';
+        const arrow = m.delta_pct >= 0 ? '▲' : '▼';
+        const sign = m.delta_pct >= 0 ? '+' : '';
+        const nameColor = m.is_primary ? 'text-brand-500' : 'text-white';
+        html += `<a href="/entity/${m.slug}/" class="flex items-center justify-between hover:bg-gray-800/50 rounded px-2 py-1.5 transition-colors"><div class="min-w-0"><span class="text-xs font-medium ${nameColor} truncate block">${m.name}</span><span class="text-[9px] text-gray-500">${m.metric}</span></div><span class="text-xs font-mono ${color} flex-shrink-0 ml-2">${arrow} ${sign}${m.delta_pct}%</span></a>`;
+      });
+      html += '</div>';
+      body.innerHTML = html;
+    },
+
+    // --- Competitive Trend Mini-Charts ---
+    loadTrend(key) {
+      fetch('{% url "dashboard:partial_exec_trend" %}?key=' + key)
+        .then(r => r.json())
+        .then(d => this.renderTrend(key, d))
+        .catch(() => {});
+    },
+    renderTrend(key, d) {
+      const canvas = document.getElementById('exec-trend-' + key);
+      if (!canvas || !d.labels.length) return;
+      const datasets = d.datasets.map(ds => ({ label: ds.label, data: ds.values, borderColor: ds.color, backgroundColor: 'transparent', borderWidth: ds.is_primary ? 2 : 1, pointRadius: 0, tension: 0.3 }));
+      if (trendCharts[key]) { trendCharts[key].destroy(); }
+      trendCharts[key] = new Chart(canvas, {
+        type: 'line', data: { labels: d.labels, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: true, position: 'bottom', labels: { color: '#9ca3af', font: { size: 8 }, boxWidth: 8, padding: 6 } }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + (ctx.parsed.y !== null ? ctx.parsed.y.toLocaleString() : '—') } } },
+          scales: { x: { ticks: { color: '#6b7280', font: { size: 7 }, maxTicksLimit: 4, maxRotation: 0 }, grid: { display: false } }, y: { ticks: { color: '#6b7280', font: { size: 8 }, maxTicksLimit: 3 }, grid: { color: 'rgba(255,255,255,0.04)' } } },
+          interaction: { mode: 'nearest', axis: 'x', intersect: false }
+        }
+      });
+    }
+  };
+}
+</script>
+{% endblock %}

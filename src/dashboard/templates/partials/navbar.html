@@ -1,0 +1,102 @@
+<!-- partials/navbar.html -->
+<nav class="sticky top-0 z-50 bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center gap-6">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="text-brand-500 font-bold tracking-wider text-lg">BlockStream BI</a>
+
+  <div class="flex gap-4 ml-4 text-sm">
+    <a href="{% url 'dashboard:main_dashboard' %}"
+       class="text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'main_dashboard' %}text-white font-semibold{% endif %}">
+      Dashboard
+    </a>
+    <a href="{% url 'dashboard:landscape' %}"
+       class="text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'landscape' %}text-white font-semibold{% endif %}">
+      Landscape
+    </a>
+    <a href="{% url 'dashboard:head_to_head' %}"
+       class="text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'head_to_head' %}text-white font-semibold{% endif %}">
+      Compare
+    </a>
+    <a href="{% url 'dashboard:momentum' %}"
+       class="text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'momentum' %}text-white font-semibold{% endif %}">
+      Momentum
+    </a>
+    <a href="{% url 'dashboard:feed' %}"
+       class="text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'feed' %}text-white font-semibold{% endif %}">
+      Feed
+    </a>
+    <a href="{% url 'dashboard:news_intelligence' %}"
+       class="text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'news_intelligence' %}text-white font-semibold{% endif %}">
+      News
+    </a>
+    <a href="{% url 'dashboard:alerts' %}"
+       class="relative text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'alerts' %}text-white font-semibold{% endif %}">
+      Alerts<span id="nav-alert-badge">{% if unseen_alert_count %}<span class="ml-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">{{ unseen_alert_count }}</span>{% endif %}</span>
+    </a>
+    <a href="{% url 'dashboard:scheduler_status' %}"
+       class="text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'scheduler_status' %}text-white font-semibold{% endif %}">
+      Scheduler
+    </a>
+    <a href="{% url 'dashboard:briefing' %}"
+       class="text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name in 'briefing,briefing_settings' %}text-white font-semibold{% endif %}">
+      Briefing
+    </a>
+    <a href="{% url 'dashboard:ai_observatory' %}"
+       class="text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'ai_observatory' %}text-white font-semibold{% endif %}">
+      AI
+    </a>
+  </div>
+
+  <!-- Global scope toggle -->
+  {% if user.is_authenticated %}
+  <form method="post" action="{% url 'dashboard:toggle_scope' %}" class="flex items-center ml-2">
+    {% csrf_token %}
+    <div class="flex rounded border border-gray-700 overflow-hidden text-xs">
+      <button
+        type="{% if user.profile.show_all_entities %}submit{% else %}button{% endif %}"
+        class="px-3 py-1 transition-colors {% if not user.profile.show_all_entities %}bg-brand-500 text-black font-medium{% else %}text-gray-400 hover:text-gray-200{% endif %}">
+        ★ Watchlist
+      </button>
+      <button
+        type="{% if not user.profile.show_all_entities %}submit{% else %}button{% endif %}"
+        class="px-3 py-1 transition-colors {% if user.profile.show_all_entities %}bg-brand-500 text-black font-medium{% else %}text-gray-400 hover:text-gray-200{% endif %}">
+        All
+      </button>
+    </div>
+  </form>
+  {% endif %}
+
+  <!-- HTMX loading indicator -->
+  <div id="htmx-spinner"
+       class="text-xs text-gray-500 hidden"
+       _="on htmx:beforeRequest remove .hidden from me
+          on htmx:afterRequest add .hidden to me">
+    loading…
+  </div>
+
+  <!-- User menu -->
+  <div class="ml-auto flex items-center gap-3 text-xs text-gray-500">
+    {% if user.is_authenticated %}
+      <span class="text-gray-400">{{ user.username }}</span>
+      <a href="{% url 'dashboard:profile_settings' %}"
+         class="hover:text-white transition-colors {% if request.resolver_match.url_name == 'profile_settings' %}text-white{% endif %}"
+         title="Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </a>
+      {% if user.is_superuser %}
+      <a href="/admin/"
+         class="hover:text-white transition-colors"
+         title="Django Admin">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+      </a>
+      {% endif %}
+      <form method="post" action="{% url 'logout' %}" class="inline">
+        {% csrf_token %}
+        <button type="submit" class="hover:text-white transition-colors">Sign out</button>
+      </form>
+    {% endif %}
+  </div>
+</nav>

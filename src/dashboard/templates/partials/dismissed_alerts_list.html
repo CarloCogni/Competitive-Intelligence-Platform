@@ -1,0 +1,12 @@
+<!-- partials/dismissed_alerts_list.html -->
+<!-- Expects: alerts (queryset annotated with .seen and .useful_value). -->
+<!-- Used by the "Previously Dismissed" section on the alerts page via HTMX lazy load. -->
+{% if alerts %}
+<div class="space-y-2">
+  {% for alert in alerts %}
+    {% include "partials/alert_card_single.html" with alert=alert %}
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-gray-600 text-sm py-4 text-center">No dismissed alerts.</p>
+{% endif %}

@@ -1,0 +1,488 @@
+{% extends "base.html" %}
+{% load dashboard_tags %}
+{% block title %}{{ entity.name }} — {{ metric_label }} — BlockStream BI{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav class="text-xs text-gray-500 mb-4 flex items-center gap-1.5">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white transition-colors">Dashboard</a>
+  <span>/</span>
+  {% if entity.vertical %}
+  <a href="{% url 'dashboard:vertical_detail' slug=entity.vertical.slug %}"
+     class="hover:text-white transition-colors">{{ entity.vertical.name }}</a>
+  <span>/</span>
+  {% endif %}
+  <a href="{% url 'dashboard:entity_detail' slug=entity.slug %}"
+     class="hover:text-white transition-colors">{{ entity.name }}</a>
+  <span>/</span>
+  <span class="text-gray-300">{{ metric_label }}</span>
+</nav>
+
+<!-- Header row -->
+<div class="flex items-start justify-between mb-6 gap-4">
+  <div>
+    <div class="flex items-center gap-3 mb-1">
+      <h1 class="text-2xl font-bold text-white">{{ metric_label }}</h1>
+      {% if entity.is_primary %}
+        <span class="px-2 py-0.5 text-xs bg-brand-500 text-white rounded">Blockstream</span>
+      {% else %}
+        <span class="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded">Competitor</span>
+      {% endif %}
+    </div>
+    <p class="text-sm text-gray-500">{{ entity.name }} · all-time history</p>
+  </div>
+  <a href="{% url 'dashboard:entity_detail' slug=entity.slug %}"
+     class="flex-shrink-0 px-3 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded border border-gray-700 transition-colors">
+    ← Back to {{ entity.name }}
+  </a>
+</div>
+
+<!-- Stats strip -->
+<div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">Current</div>
+    <div class="text-lg font-bold {% if is_primary %}text-brand-500{% else %}text-blue-400{% endif %}">
+      {% if stats.current is not None %}{{ stats.current|format_metric:metric_key }}{% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">Min</div>
+    <div class="text-lg font-bold text-white">
+      {% if stats.min is not None %}{{ stats.min|format_metric:metric_key }}{% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">Max</div>
+    <div class="text-lg font-bold text-white">
+      {% if stats.max is not None %}{{ stats.max|format_metric:metric_key }}{% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">Avg</div>
+    <div class="text-lg font-bold text-white">
+      {% if stats.avg is not None %}{{ stats.avg|format_metric:metric_key }}{% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">7-day trend</div>
+    <div class="text-lg font-bold
+      {% if stats.trend == 'up' %}{% if is_inverted %}text-red-400{% else %}text-green-400{% endif %}
+      {% elif stats.trend == 'down' %}{% if is_inverted %}text-green-400{% else %}text-red-400{% endif %}
+      {% else %}text-gray-600{% endif %}">
+      {% if stats.trend == 'up' %}▲ +{{ stats.trend_pct }}%
+      {% elif stats.trend == 'down' %}▼ −{{ stats.trend_pct }}%
+      {% else %}—{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Competitor overlay panel -->
+<div class="bg-gray-900 rounded-lg border border-gray-800 p-4 mb-4">
+  <div class="flex items-center justify-between mb-3 gap-4">
+    <div class="flex items-center gap-2 min-w-0">
+      <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Competitor Overlay</h2>
+      <span class="text-xs text-gray-600 truncate">click a pill to add it to the chart · hover to focus</span>
+    </div>
+    <div class="flex gap-2 flex-shrink-0">
+      <button id="overlay-select-all"
+              class="text-xs px-2.5 py-1 rounded-full border border-gray-700 text-gray-400 hover:text-white hover:border-gray-400 transition-colors">
+        Select All
+      </button>
+      <button id="overlay-deselect-all"
+              class="text-xs px-2.5 py-1 rounded-full border border-gray-700 text-gray-400 hover:text-white hover:border-gray-400 transition-colors">
+        Deselect All
+      </button>
+    </div>
+  </div>
+  <div id="entity-pills" class="flex flex-wrap gap-2 min-h-[28px] items-center">
+    <span id="pills-loading" class="text-xs text-gray-600 italic">Loading peers…</span>
+  </div>
+</div>
+
+<!-- Main Plotly chart -->
+<div class="bg-gray-900 rounded-lg border border-gray-800 p-4 mb-4">
+  <div id="plotly-chart" style="height:520px;width:100%;"></div>
+</div>
+
+<!-- Rate of change: velocity + acceleration -->
+<div class="bg-gray-900 rounded-lg border border-gray-800 p-4 mb-6">
+  <div class="flex items-center gap-2 mb-1">
+    <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Rate of Change</h2>
+    <button onclick="window.dispatchEvent(new CustomEvent('open-help', { detail: {
+              title: 'Rate of Change — Velocity &amp; Acceleration',
+              body: '<p class=\'mb-3\'>This chart borrows from physics to show <em>how fast</em> a metric is moving and whether that speed is itself changing.</p>\
+              <ul class=\'space-y-2 list-none\'>\
+                <li><span class=\'text-white font-semibold\'>Velocity (green/red bars):</span> The net change over a rolling 7-reading window. <code>velocity = value[today] − value[7 readings ago]</code>. A <span class=\'text-green-400\'>green</span> bar means the metric grew over the last 7 readings; a <span class=\'text-red-400\'>red</span> bar means it shrank.</li>\
+                <li><span class=\'text-white font-semibold\'>Acceleration (purple line):</span> The change in velocity from one reading to the next. <code>acceleration = velocity[today] − velocity[yesterday]</code>. Above zero → velocity is <em>increasing</em> (growth is speeding up). Below zero → velocity is <em>decreasing</em> (growth is slowing down or decline is deepening).</li>\
+                <li><span class=\'text-white font-semibold\'>Reading:</span> One data-collection run — typically once per day, so 7 readings ≈ 1 week.</li>\
+              </ul>\
+              <p class=\'mt-3 text-gray-500 text-xs\'>Think of it like driving: velocity = your speed, acceleration = whether you are pressing the gas or the brake. A competitor whose acceleration just turned positive is about to start gaining ground fast.</p>'
+            }}))"
+            class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+            title="What is this chart?">?</button>
+  </div>
+  <div id="velocity-chart" style="height:220px;width:100%;"></div>
+</div>
+
+<!-- Related alerts -->
+{% if related_alerts %}
+<div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
+  <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Alert History — {{ metric_label }}</h2>
+  <div class="space-y-2">
+    {% for alert in related_alerts %}
+    <div class="flex items-start gap-3 p-3 bg-gray-800 rounded text-xs">
+      <div class="flex-shrink-0 mt-0.5">
+        {% if alert.severity == 'critical' %}<span class="inline-block w-2 h-2 rounded-full bg-red-500"></span>
+        {% elif alert.severity == 'high' %}<span class="inline-block w-2 h-2 rounded-full bg-orange-400"></span>
+        {% elif alert.severity == 'medium' %}<span class="inline-block w-2 h-2 rounded-full bg-yellow-400"></span>
+        {% else %}<span class="inline-block w-2 h-2 rounded-full bg-gray-500"></span>{% endif %}
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-gray-200 leading-snug">{{ alert.message }}</div>
+        <div class="text-gray-600 mt-1">{{ alert.created_at|date:"M d, Y H:i" }}</div>
+      </div>
+      {% if alert.metadata.delta_pct %}
+      <div class="flex-shrink-0 font-mono {% if alert.metadata.delta_pct > 0 %}text-green-400{% else %}text-red-400{% endif %}">
+        {% if alert.metadata.delta_pct > 0 %}▲ +{% else %}▼ {% endif %}{{ alert.metadata.delta_pct|floatformat:1 }}%
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{{ chart_data|json_script:"metric-chart-data" }}
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script>
+(function () {
+  // ---------------------------------------------------------------------------
+  // Constants & data
+  // ---------------------------------------------------------------------------
+  const ENTITY_SLUG = '{{ entity.slug }}';
+  const METRIC_KEY  = '{{ metric_key }}';
+  const IS_PRIMARY  = {{ is_primary|lower }};
+
+  const MAIN_COLOR = IS_PRIMARY ? '#f7931a' : '#60a5fa';
+  const FILL_COLOR = IS_PRIMARY ? 'rgba(247,147,26,0.08)' : 'rgba(96,165,250,0.08)';
+  const AVG_COLOR  = IS_PRIMARY ? 'rgba(247,147,26,0.40)' : 'rgba(96,165,250,0.40)';
+
+  // Palette slot 0 = current entity; peers cycle from slot 1
+  const PALETTE = [
+    '#f7931a','#60a5fa','#a78bfa','#34d399','#f472b6',
+    '#fb923c','#38bdf8','#c084fc','#4ade80','#facc15',
+    '#e879f9','#2dd4bf','#f59e0b','#818cf8','#86efac',
+  ];
+
+  const raw     = JSON.parse(document.getElementById('metric-chart-data').textContent);
+  const mainDiv = document.getElementById('plotly-chart');
+  const velDiv  = document.getElementById('velocity-chart');
+
+  // Alert annotation data (server-rendered into JS)
+  const alertAnnotations = [];
+  {% for alert in related_alerts %}{% if alert.metadata.delta_pct %}
+  alertAnnotations.push({
+    x:     "{{ alert.created_at|date:'Y-m-d' }}",
+    label: {% autoescape off %}"{% if alert.metadata.delta_pct > 0 %}+{% endif %}{{ alert.metadata.delta_pct|floatformat:1 }}%"{% endautoescape %},
+    dir:   {{ alert.metadata.delta_pct }} >= 0 ? 'up' : 'down',
+  });
+  {% endif %}{% endfor %}
+
+  // Shared dark-theme axis defaults
+  const AXIS_STYLE = {
+    gridcolor:  'rgba(255,255,255,0.05)',
+    linecolor:  'rgba(255,255,255,0.10)',
+    tickcolor:  'rgba(255,255,255,0.10)',
+    tickfont:   { size: 11 },
+  };
+
+  // ---------------------------------------------------------------------------
+  // 1. Main chart
+  // ---------------------------------------------------------------------------
+  function buildMainChart() {
+    const traceMain = {
+      x: raw.labels, y: raw.values,
+      mode: 'lines',
+      name: '{{ metric_label|escapejs }}',
+      line: { color: MAIN_COLOR, width: 2.5, shape: 'spline', smoothing: 0.6 },
+      fill: 'tozeroy', fillcolor: FILL_COLOR,
+      meta: { slug: ENTITY_SLUG, kind: 'main' },
+      hovertemplate: '<b>%{x}</b><br>{{ metric_label|escapejs }}: %{y:,.2f}<extra></extra>',
+    };
+
+    const traceAvg = {
+      x: raw.labels, y: raw.rolling,
+      mode: 'lines',
+      name: '7-reading avg',
+      line: { color: AVG_COLOR, width: 1.5, dash: 'dot', shape: 'spline', smoothing: 0.6 },
+      meta: { slug: ENTITY_SLUG, kind: 'avg' },
+      hovertemplate: '<b>%{x}</b><br>7-reading avg: %{y:,.2f}<extra></extra>',
+    };
+
+    const shapes = alertAnnotations.map(a => ({
+      type: 'line', x0: a.x, x1: a.x, y0: 0, y1: 1, yref: 'paper',
+      line: { color: a.dir === 'up' ? 'rgba(52,211,153,0.35)' : 'rgba(248,113,113,0.35)', width: 1.5, dash: 'dot' },
+    }));
+
+    const annotations = alertAnnotations.map(a => ({
+      x: a.x, y: 1, yref: 'paper',
+      text: a.label, showarrow: false,
+      font: { size: 10, color: a.dir === 'up' ? '#34d399' : '#f87171' },
+      xanchor: 'center', yanchor: 'bottom',
+    }));
+
+    Plotly.newPlot(mainDiv, [traceMain, traceAvg], {
+      paper_bgcolor: '#111827',
+      plot_bgcolor:  '#1f2937',
+      font:   { family: 'ui-monospace, monospace', color: '#9ca3af', size: 12 },
+      margin: { t: 48, r: 24, b: 40, l: 56 },
+      legend: {
+        orientation: 'h', xanchor: 'right', x: 1, y: 1.0,
+        yanchor: 'bottom', font: { size: 11 }, bgcolor: 'rgba(0,0,0,0)',
+      },
+      hovermode: 'x unified',
+      hoverlabel: {
+        bgcolor: '#1f2937', bordercolor: MAIN_COLOR,
+        font: { family: 'ui-monospace, monospace', size: 12, color: '#f9fafb' },
+      },
+      xaxis: {
+        ...AXIS_STYLE,
+        type: 'date',
+        rangeselector: {
+          bgcolor: '#374151', bordercolor: '#4b5563',
+          activecolor: IS_PRIMARY ? '#f7931a' : '#3b82f6',
+          font: { color: '#d1d5db', size: 11 },
+          buttons: [
+            { count: 1, label: '1M',  step: 'month', stepmode: 'backward' },
+            { count: 3, label: '3M',  step: 'month', stepmode: 'backward' },
+            { count: 6, label: '6M',  step: 'month', stepmode: 'backward' },
+            { count: 1, label: 'YTD', step: 'year',  stepmode: 'todate'   },
+            { step: 'all', label: 'All' },
+          ],
+        },
+        rangeslider: { bgcolor: '#1f2937', bordercolor: '#374151', thickness: 0.06 },
+      },
+      yaxis: { ...AXIS_STYLE, zeroline: false, automargin: true },
+      shapes, annotations,
+    }, {
+      responsive: true, displaylogo: false,
+      modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'],
+      toImageButtonOptions: {
+        format: 'png', filename: '{{ entity.slug }}_{{ metric_key }}',
+        height: 600, width: 1200, scale: 2,
+      },
+    });
+
+    // Sync zoom/pan to velocity chart
+    mainDiv.on('plotly_relayout', function (ev) {
+      if (!velDiv._fullLayout) return;
+      const u = {};
+      if (ev['xaxis.range[0]'] !== undefined) u['xaxis.range[0]'] = ev['xaxis.range[0]'];
+      if (ev['xaxis.range[1]'] !== undefined) u['xaxis.range[1]'] = ev['xaxis.range[1]'];
+      if (ev['xaxis.autorange'])               u['xaxis.autorange'] = true;
+      if (Object.keys(u).length) Plotly.relayout(velDiv, u);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2. Velocity / Acceleration chart
+  // ---------------------------------------------------------------------------
+  function vel7(values) {
+    // 7-reading velocity: net change over the last 7 readings
+    return values.map((v, i) => {
+      if (v === null || i < 7 || values[i - 7] === null) return null;
+      return v - values[i - 7];
+    });
+  }
+
+  function acc1(vel) {
+    // Acceleration: is velocity increasing or decreasing?
+    return vel.map((v, i) => {
+      if (v === null || i === 0 || vel[i - 1] === null) return null;
+      return v - vel[i - 1];
+    });
+  }
+
+  function buildVelocityChart() {
+    const vel = vel7(raw.values);
+    const acc = acc1(vel);
+
+    const barColors = vel.map(v =>
+      v === null ? 'transparent' : v >= 0 ? 'rgba(52,211,153,0.65)' : 'rgba(248,113,113,0.65)'
+    );
+
+    Plotly.newPlot(velDiv, [
+      {
+        x: raw.labels, y: vel,
+        type: 'bar', name: 'Velocity (Δ/7 readings)',
+        marker: { color: barColors, line: { width: 0 } },
+        hovertemplate: '<b>%{x}</b><br>Velocity: %{y:+,.2f}<extra></extra>',
+      },
+      {
+        x: raw.labels, y: acc,
+        type: 'scatter', mode: 'lines', name: 'Acceleration (Δ velocity)',
+        yaxis: 'y2',
+        line: { color: 'rgba(196,181,253,0.85)', width: 1.5, shape: 'spline', smoothing: 0.7 },
+        hovertemplate: '<b>%{x}</b><br>Acceleration: %{y:+,.2f}<extra></extra>',
+      },
+    ], {
+      paper_bgcolor: '#111827',
+      plot_bgcolor:  '#1f2937',
+      font:   { family: 'ui-monospace, monospace', color: '#9ca3af', size: 11 },
+      margin: { t: 8, r: 60, b: 36, l: 56 },
+      barmode: 'relative',
+      legend: {
+        orientation: 'h', xanchor: 'right', x: 1, y: 1.18,
+        font: { size: 10 }, bgcolor: 'rgba(0,0,0,0)',
+      },
+      hovermode: 'x unified',
+      hoverlabel: {
+        bgcolor: '#1f2937', bordercolor: '#4b5563',
+        font: { family: 'ui-monospace, monospace', size: 11, color: '#f9fafb' },
+      },
+      xaxis: { ...AXIS_STYLE, type: 'date', tickfont: { size: 10 } },
+      yaxis: {
+        ...AXIS_STYLE, tickfont: { size: 10 },
+        zeroline: true, zerolinecolor: 'rgba(255,255,255,0.12)', zerolinewidth: 1,
+        title: { text: 'velocity', font: { size: 10 }, standoff: 6 },
+        automargin: true,
+      },
+      yaxis2: {
+        overlaying: 'y', side: 'right',
+        gridcolor: 'rgba(0,0,0,0)',
+        tickfont: { size: 10, color: 'rgba(196,181,253,0.7)' },
+        zeroline: false,
+        title: { text: 'acceleration', font: { size: 10, color: 'rgba(196,181,253,0.7)' }, standoff: 6 },
+        automargin: true,
+      },
+    }, {
+      responsive: true, displaylogo: false,
+      modeBarButtonsToRemove: ['select2d','lasso2d','autoScale2d','zoom2d','pan2d','resetScale2d'],
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. Competitor overlay
+  // ---------------------------------------------------------------------------
+  const peerTraceIdx = {};  // { slug: [traceIndex, ...] }
+  const peerColor    = {};  // { slug: hex }
+
+  async function loadPeers() {
+    try {
+      const res  = await fetch(`/entity/${ENTITY_SLUG}/metric/${METRIC_KEY}/peers/`);
+      const data = await res.json();
+      buildPills(data.peers);
+      addPeerTraces(data.peers);
+    } catch (_) {
+      const el = document.getElementById('pills-loading');
+      if (el) el.textContent = 'Could not load peers.';
+    }
+  }
+
+  function addPeerTraces(peers) {
+    const traces = [];
+    let ci = 1;  // color index; slot 0 is reserved for the current entity
+
+    peers.forEach(p => {
+      if (p.is_current) { peerColor[p.slug] = MAIN_COLOR; return; }
+      peerColor[p.slug] = PALETTE[ci % PALETTE.length];
+      peerTraceIdx[p.slug] = [mainDiv.data.length + traces.length];
+      traces.push({
+        x: p.labels, y: p.values,
+        mode: 'lines', name: p.entity_name,
+        visible: false, opacity: 0.85,
+        line: { color: peerColor[p.slug], width: 1.8, shape: 'spline', smoothing: 0.5 },
+        meta: { slug: p.slug, kind: 'peer' },
+        hovertemplate: `<b>%{x}</b><br>${p.entity_name}: %{y:,.2f}<extra></extra>`,
+      });
+      ci++;
+    });
+
+    if (traces.length) Plotly.addTraces(mainDiv, traces);
+  }
+
+  function buildPills(peers) {
+    const container = document.getElementById('entity-pills');
+    container.innerHTML = '';
+    let ci = 1;
+
+    peers.forEach(p => {
+      const c      = p.is_current ? MAIN_COLOR : PALETTE[ci % PALETTE.length];
+      const isCurr = p.is_current;
+      if (!isCurr) ci++;
+
+      const btn = document.createElement('button');
+      btn.dataset.slug = p.slug;
+      btn.className = 'text-xs px-2.5 py-1 rounded-full border transition-all duration-150 font-medium';
+      btn.textContent = p.entity_name;
+
+      function setActive(on) {
+        btn.style.backgroundColor = on ? c       : 'transparent';
+        btn.style.borderColor      = on ? 'transparent' : '#374151';
+        btn.style.color            = on ? '#111'  : '#6b7280';
+      }
+
+      setActive(isCurr);  // current entity always lit; peers start dim
+
+      if (isCurr) {
+        btn.style.cursor = 'default';
+        btn.title = 'Current entity — always visible';
+      } else {
+        btn.addEventListener('click', function () {
+          const idxs = peerTraceIdx[p.slug] || [];
+          if (!idxs.length) return;
+          const nextVisible = !mainDiv.data[idxs[0]].visible;
+          Plotly.restyle(mainDiv, { visible: nextVisible }, idxs);
+          setActive(nextVisible);
+        });
+
+        // Hover → dim all other peer traces for focus
+        btn.addEventListener('mouseenter', function () {
+          const others = Object.entries(peerTraceIdx)
+            .filter(([slug]) => slug !== p.slug)
+            .flatMap(([, idxs]) => idxs);
+          if (others.length) Plotly.restyle(mainDiv, { opacity: 0.07 }, others);
+        });
+        btn.addEventListener('mouseleave', function () {
+          const all = Object.values(peerTraceIdx).flat();
+          if (all.length) Plotly.restyle(mainDiv, { opacity: 0.85 }, all);
+        });
+      }
+
+      container.appendChild(btn);
+    });
+
+    // Select / Deselect all
+    document.getElementById('overlay-select-all').addEventListener('click', function () {
+      peers.filter(p => !p.is_current).forEach(p => {
+        const idxs = peerTraceIdx[p.slug] || [];
+        if (idxs.length) Plotly.restyle(mainDiv, { visible: true }, idxs);
+        const b = container.querySelector(`[data-slug="${p.slug}"]`);
+        if (b) { b.style.backgroundColor = peerColor[p.slug]; b.style.borderColor = 'transparent'; b.style.color = '#111'; }
+      });
+    });
+
+    document.getElementById('overlay-deselect-all').addEventListener('click', function () {
+      peers.filter(p => !p.is_current).forEach(p => {
+        const idxs = peerTraceIdx[p.slug] || [];
+        if (idxs.length) Plotly.restyle(mainDiv, { visible: false }, idxs);
+        const b = container.querySelector(`[data-slug="${p.slug}"]`);
+        if (b) { b.style.backgroundColor = 'transparent'; b.style.borderColor = '#374151'; b.style.color = '#6b7280'; }
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------------
+  buildMainChart();
+  buildVelocityChart();
+  loadPeers();
+
+  window.addEventListener('resize', () => {
+    Plotly.Plots.resize(mainDiv);
+    Plotly.Plots.resize(velDiv);
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,87 @@
+<!-- partials/candidate_row.html — Single competitor candidate card (HTMX swap target) -->
+<div id="candidate-{{ candidate.pk }}"
+     class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex items-start justify-between gap-4">
+
+  <div class="flex-1 min-w-0">
+    <!-- Name + status badge -->
+    <div class="flex items-center gap-2 mb-1">
+      <span class="font-medium text-white">{{ candidate.name }}</span>
+
+      {% if candidate.status == "pending" %}
+        <span class="text-xs px-1.5 py-0.5 rounded bg-yellow-900 text-yellow-300">Pending</span>
+      {% elif candidate.status == "promoted" %}
+        <span class="text-xs px-1.5 py-0.5 rounded bg-green-900 text-green-300">Promoted</span>
+      {% elif candidate.status == "dismissed" %}
+        <span class="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">Dismissed</span>
+      {% endif %}
+
+      {% if candidate.alert_fired %}
+        <span class="text-xs px-1.5 py-0.5 rounded bg-blue-900 text-blue-300">Alert fired</span>
+      {% endif %}
+    </div>
+
+    <!-- LLM analysis: category + relevance -->
+    {% if candidate.category %}
+    <div class="text-xs text-gray-500 mb-1">
+      <span class="px-1.5 py-0.5 rounded bg-gray-800 text-gray-300">{{ candidate.category }}</span>
+      {% if candidate.relevance_score %}
+      <span class="ml-2">Relevance: <span class="text-white">{{ candidate.relevance_score }}/10</span></span>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if candidate.llm_reason %}
+    <div class="text-xs text-gray-400 italic mb-1">{{ candidate.llm_reason }}</div>
+    {% endif %}
+
+    <!-- Mention count + dates -->
+    <div class="text-xs text-gray-500 mb-2">
+      {{ candidate.mention_count }} mention{{ candidate.mention_count|pluralize }}
+      &middot; First seen {{ candidate.first_seen|timesince }} ago
+      &middot; Last seen {{ candidate.last_seen|timesince }} ago
+    </div>
+
+    <!-- Sample URLs -->
+    {% if candidate.sample_urls %}
+    <div class="text-xs text-gray-600">
+      <span class="text-gray-500">Sample articles:</span>
+      {% for url in candidate.sample_urls %}
+        <a href="{{ url }}" target="_blank" rel="noopener noreferrer"
+           class="text-blue-500 hover:text-blue-400 ml-1" title="{{ url }}">[{{ forloop.counter }}]</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Promoted entity link -->
+    {% if candidate.promoted_entity %}
+    <div class="text-xs text-green-500 mt-1">
+      Tracking as:
+      <a href="{% url 'dashboard:entity_detail' candidate.promoted_entity.slug %}"
+         class="underline hover:text-green-400">{{ candidate.promoted_entity.name }}</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Action buttons (only for pending candidates) -->
+  {% if candidate.status == "pending" %}
+  <div class="flex items-center gap-2 flex-shrink-0">
+    <button hx-post="{% url 'dashboard:promote_candidate' candidate.pk %}"
+            hx-target="#candidate-{{ candidate.pk }}"
+            hx-swap="outerHTML"
+            class="px-3 py-1.5 text-xs rounded bg-green-900 border border-green-700
+                   text-green-300 hover:bg-green-800 transition-colors"
+            title="Promote to tracked entity">
+      Promote
+    </button>
+    <button hx-post="{% url 'dashboard:dismiss_candidate' candidate.pk %}"
+            hx-target="#candidate-{{ candidate.pk }}"
+            hx-swap="outerHTML"
+            hx-confirm="Dismiss this candidate? It will be excluded from future detection."
+            class="px-3 py-1.5 text-xs rounded bg-gray-800 border border-gray-700
+                   text-gray-400 hover:bg-gray-700 transition-colors"
+            title="Dismiss candidate">
+      Dismiss
+    </button>
+  </div>
+  {% endif %}
+
+</div>

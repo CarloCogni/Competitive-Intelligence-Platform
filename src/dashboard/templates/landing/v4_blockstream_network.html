@@ -1,0 +1,508 @@
+{% extends "landing/base_landing.html" %}
+{% block title %}BlockStream BI — Intelligence Platform{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Typewriter cursor */
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .cursor { animation: blink 1s step-end infinite; }
+
+  /* Scroll bounce arrow */
+  @keyframes nudge { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
+  .nudge { animation: nudge 2s ease-in-out infinite; }
+
+  /* Bar grow-in */
+  @keyframes barGrow { from{height:0} to{height:var(--bh)} }
+  .bar { animation: barGrow 0.8s cubic-bezier(.22,1,.36,1) both; }
+
+  /* Card hover lift */
+  .stat-card { transition: transform .2s ease, box-shadow .2s ease; }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+
+  /* Vignette on hero */
+  #hero::after {
+    content:'';
+    position:absolute; inset:0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(12,12,15,.65) 100%);
+    pointer-events:none; z-index:2;
+  }
+</style>
+{% endblock %}
+
+{% block body_class %}bg-[#0C0C0F] text-white overflow-x-hidden{% endblock %}
+
+{% block body %}
+<div x-data="{
+  headline: '',
+  phrases: ['One Dashboard. Every Signal.','Real-Time Competitive Intelligence.','Command Your Market Position.','Expanding Bitcoin\'s Capabilities.'],
+  phraseIdx: 0, charIdx: 0, deleting: false,
+  nodeCount: 0,
+  status: 'INITIALIZING...',
+  init() {
+    setTimeout(() => this.tick(), 500);
+    const steps = ['CONNECTING PEERS...','FEED AUTHENTICATED','LOADING INTELLIGENCE...','SYSTEM READY'];
+    let i = 0;
+    const boot = () => { if(i < steps.length){ this.status = steps[i++]; setTimeout(boot, 620); } };
+    setTimeout(boot, 150);
+    let n = 0;
+    const ctr = setInterval(() => { if(n >= 8){ clearInterval(ctr); return; } this.nodeCount = ++n; }, 290);
+  },
+  tick() {
+    const phrase = this.phrases[this.phraseIdx];
+    if (!this.deleting) {
+      if (this.charIdx <= phrase.length) {
+        this.headline = phrase.slice(0, this.charIdx++);
+        setTimeout(() => this.tick(), 50);
+      } else {
+        setTimeout(() => { this.deleting = true; this.tick(); }, 2500);
+      }
+    } else {
+      if (this.charIdx > 0) {
+        this.headline = phrase.slice(0, --this.charIdx);
+        setTimeout(() => this.tick(), 25);
+      } else {
+        this.deleting = false;
+        this.phraseIdx = (this.phraseIdx + 1) % this.phrases.length;
+        setTimeout(() => this.tick(), 220);
+      }
+    }
+  }
+}">
+
+  <!-- ═══════════════════════════════════════════════════
+       SECTION 1 — HERO (full viewport, login centred)
+       ═══════════════════════════════════════════════════ -->
+  <section id="hero" class="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 py-16">
+
+    <!-- Canvas background -->
+    <canvas id="net-canvas" class="absolute inset-0 w-full h-full" style="z-index:1"></canvas>
+
+    <!-- Bottom gradient fade into section 2 -->
+    <div class="absolute bottom-0 inset-x-0 h-40 pointer-events-none" style="z-index:3; background:linear-gradient(to bottom, transparent, #0C0C0F)"></div>
+
+    <!-- ── Brand header ── -->
+    <div class="relative text-center mb-8 font-mono" style="z-index:4">
+      <div class="inline-flex items-center gap-2 mb-3">
+        <div class="w-7 h-7 rounded flex items-center justify-center"
+             style="background:rgba(0,195,255,0.12); border:1px solid rgba(0,195,255,0.25);">
+          <svg viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="#00C3FF" stroke-width="1.5"/>
+            <path d="M8.5 8.5h4a2 2 0 0 1 0 4h-4v4" stroke="#00C3FF" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M8.5 12.5h4.5a2 2 0 0 1 0 4H8.5" stroke="#00C3FF" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="text-sm font-bold tracking-[0.3em] uppercase" style="color:#00C3FF">BlockStream BI</span>
+      </div>
+
+      <p class="text-xs tracking-[0.25em] mb-4" style="color:#677FD3">// Intelligence Platform 2026</p>
+
+      <!-- Typewriter -->
+      <h1 class="text-white text-xl sm:text-2xl md:text-3xl font-bold tracking-wide min-h-[2.5rem]">
+        <span x-text="headline"></span><span class="cursor" style="color:#00C3FF">█</span>
+      </h1>
+    </div>
+
+    <!-- ── Login terminal card ── -->
+    <div class="relative w-full max-w-xs sm:max-w-sm font-mono" style="z-index:4">
+      <div class="rounded-md overflow-hidden"
+           style="background:rgba(17,19,22,0.90); border:1px solid rgba(0,195,255,0.20);
+                  backdrop-filter:blur(20px); box-shadow:0 0 60px rgba(0,195,255,0.05), 0 24px 64px rgba(0,0,0,.7);">
+
+        <!-- macOS title bar -->
+        <div class="flex items-center gap-2 px-4 py-2.5 border-b"
+             style="background:rgba(0,195,255,0.06); border-color:rgba(0,195,255,0.12);">
+          <span class="w-3 h-3 rounded-full bg-red-500/70"></span>
+          <span class="w-3 h-3 rounded-full bg-yellow-500/60"></span>
+          <span class="w-3 h-3 rounded-full bg-green-500/60"></span>
+          <span class="ml-2 text-xs tracking-[0.25em] uppercase" style="color:rgba(0,195,255,0.50)">bsi_access_v2.1</span>
+        </div>
+
+        <div class="p-5 sm:p-6">
+
+          <!-- Boot output -->
+          <div class="text-xs mb-1 leading-loose" style="color:#21272D">
+            <div>&gt; loading intelligence_core...</div>
+            <div>&gt; authenticating data_feed...</div>
+          </div>
+          <div class="text-xs mb-5 flex items-center gap-1.5" style="color:#00C3FF99">
+            &gt; <span x-text="status" style="color:#00C3FF"></span>
+            <span class="inline-block w-2 h-[13px] align-middle animate-pulse" style="background:#00C3FF99"></span>
+          </div>
+
+          <form method="post" action="/accounts/login/" class="space-y-5">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}" />
+
+            <div>
+              <label class="block text-xs mb-1.5" style="color:#677FD3">&gt; USERNAME:</label>
+              <input name="username" type="text" autocomplete="username" autofocus required
+                     class="w-full bg-transparent border-0 text-sm py-1.5 focus:outline-none transition-colors"
+                     style="border-bottom:1px solid rgba(0,195,255,0.28); color:#00C3FF; caret-color:#00C3FF;"
+                     placeholder="root"
+                     onfocus="this.style.borderBottomColor='rgba(0,195,255,0.75)'"
+                     onblur="this.style.borderBottomColor='rgba(0,195,255,0.28)'" />
+            </div>
+
+            <div>
+              <label class="block text-xs mb-1.5" style="color:#677FD3">&gt; PASSWORD:</label>
+              <input name="password" type="password" autocomplete="current-password" required
+                     class="w-full bg-transparent border-0 text-sm py-1.5 focus:outline-none transition-colors"
+                     style="border-bottom:1px solid rgba(0,195,255,0.28); color:#00C3FF; caret-color:#00C3FF;"
+                     onfocus="this.style.borderBottomColor='rgba(0,195,255,0.75)'"
+                     onblur="this.style.borderBottomColor='rgba(0,195,255,0.28)'" />
+            </div>
+
+            <button type="submit"
+                    class="w-full text-xs py-2.5 tracking-[0.35em] uppercase font-bold transition-all duration-150"
+                    style="background:rgba(0,195,255,0.10); border:1px solid rgba(0,195,255,0.35); color:#00C3FF;"
+                    onmouseover="this.style.background='rgba(0,195,255,0.20)'; this.style.borderColor='rgba(0,195,255,0.65)'"
+                    onmouseout="this.style.background='rgba(0,195,255,0.10)'; this.style.borderColor='rgba(0,195,255,0.35)'">
+              [ AUTHENTICATE ]
+            </button>
+          </form>
+
+          <!-- System stats -->
+          <div class="mt-5 pt-4 text-xs space-y-1.5" style="border-top:1px solid #1C2127; color:#2B2E36">
+            <div class="flex justify-between">
+              <span>ENCRYPTION</span>
+              <span style="color:#00B45A66">AES-256-GCM</span>
+            </div>
+            <div class="flex justify-between">
+              <span>ACTIVE NODES</span>
+              <span style="color:#00C3FF66" x-text="nodeCount + '/8'">0/8</span>
+            </div>
+            <div class="flex justify-between">
+              <span>FEED</span>
+              <span style="color:#00B45A66">LIVE</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Scroll hint -->
+    <a href="#products"
+       class="nudge relative mt-10 flex flex-col items-center gap-1 text-xs tracking-[0.3em] uppercase"
+       style="z-index:4; color:#21272D;">
+      <span>Explore Products</span>
+      <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 6l4 4 4-4" stroke="#2B2E36" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       SECTION 2 — PRODUCT STAT CARDS
+       ═══════════════════════════════════════════════════ -->
+  <section id="products" class="relative py-16 px-4 font-mono" style="background:#0C0C0F;">
+
+    <!-- Section header -->
+    <div class="text-center mb-10 max-w-xl mx-auto">
+      <div class="text-xs tracking-[0.3em] uppercase mb-2" style="color:#00C3FF66">// MONITORED VERTICALS</div>
+      <h2 class="text-white text-base font-bold tracking-wide">Tracked Products &amp; Competitors</h2>
+      <p class="text-xs mt-2" style="color:#2B2E36">6 verticals &nbsp;·&nbsp; 23 competitors &nbsp;·&nbsp; signals updated hourly</p>
+    </div>
+
+    <!-- 2-col on mobile, 3-col on sm+ -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
+
+      <!-- JADE — Green (#00B45A) -->
+      <div class="stat-card flex flex-col p-4 rounded-sm"
+           style="background:#15181C; border:1px solid #00B45A22;">
+        <div class="flex justify-between items-start mb-0.5">
+          <span class="text-xs font-bold tracking-widest" style="color:#00B45A">JADE</span>
+          <span class="text-xs" style="color:#00B45A55">●</span>
+        </div>
+        <div class="text-xs mb-3" style="color:#677FD3">Hardware Wallet</div>
+        <div class="flex items-end gap-[3px] h-8 mt-auto">
+          <div class="bar flex-1 rounded-sm" style="--bh:38%; height:38%; background:#00B45A33;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:55%; height:55%; background:#00B45A55; animation-delay:.07s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:44%; height:44%; background:#00B45A66; animation-delay:.14s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:72%; height:72%; background:#00B45A88; animation-delay:.21s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:84%; height:84%; background:#00B45Aaa; animation-delay:.28s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:100%;height:100%;background:#00B45A; animation-delay:.35s;"></div>
+        </div>
+        <div class="text-xs mt-2 pt-1.5" style="color:#21272D; border-top:1px solid #1C2127">SEC: MAXIMUM</div>
+      </div>
+
+      <!-- LIQUID — Teal (#46B4A5) -->
+      <div class="stat-card flex flex-col p-4 rounded-sm"
+           style="background:#15181C; border:1px solid #46B4A522;">
+        <div class="flex justify-between items-start mb-0.5">
+          <span class="text-xs font-bold tracking-widest" style="color:#46B4A5">LIQUID</span>
+          <span class="text-xs" style="color:#46B4A555">●</span>
+        </div>
+        <div class="text-xs mb-3" style="color:#677FD3">Layer-2 Network</div>
+        <div class="flex items-end gap-[3px] h-8 mt-auto">
+          <div class="bar flex-1 rounded-sm" style="--bh:28%; height:28%; background:#46B4A533;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:50%; height:50%; background:#46B4A555; animation-delay:.07s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:65%; height:65%; background:#46B4A566; animation-delay:.14s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:58%; height:58%; background:#46B4A588; animation-delay:.21s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:80%; height:80%; background:#46B4A5aa; animation-delay:.28s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:94%; height:94%; background:#46B4A5; animation-delay:.35s;"></div>
+        </div>
+        <div class="text-xs mt-2 pt-1.5" style="color:#21272D; border-top:1px solid #1C2127">TXS: TRACKING</div>
+      </div>
+
+      <!-- GREEN — Cyan (#00C3FF) -->
+      <div class="stat-card flex flex-col p-4 rounded-sm"
+           style="background:#15181C; border:1px solid #00C3FF22;">
+        <div class="flex justify-between items-start mb-0.5">
+          <span class="text-xs font-bold tracking-widest" style="color:#00C3FF">GREEN</span>
+          <span class="text-xs" style="color:#00C3FF55">●</span>
+        </div>
+        <div class="text-xs mb-3" style="color:#677FD3">Mobile Wallet</div>
+        <div class="flex items-end gap-[3px] h-8 mt-auto">
+          <div class="bar flex-1 rounded-sm" style="--bh:44%; height:44%; background:#00C3FF33;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:68%; height:68%; background:#00C3FF55; animation-delay:.07s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:52%; height:52%; background:#00C3FF66; animation-delay:.14s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:80%; height:80%; background:#00C3FF88; animation-delay:.21s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:88%; height:88%; background:#00C3FFaa; animation-delay:.28s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:98%; height:98%; background:#00C3FF; animation-delay:.35s;"></div>
+        </div>
+        <div class="text-xs mt-2 pt-1.5" style="color:#21272D; border-top:1px solid #1C2127">RATINGS: LIVE</div>
+      </div>
+
+      <!-- CLN — Blue (#3C82F9) -->
+      <div class="stat-card flex flex-col p-4 rounded-sm"
+           style="background:#15181C; border:1px solid #3C82F922;">
+        <div class="flex justify-between items-start mb-0.5">
+          <span class="text-xs font-bold tracking-widest" style="color:#3C82F9">CLN</span>
+          <span class="text-xs" style="color:#3C82F955">●</span>
+        </div>
+        <div class="text-xs mb-3" style="color:#677FD3">Core Lightning</div>
+        <div class="flex items-end gap-[3px] h-8 mt-auto">
+          <div class="bar flex-1 rounded-sm" style="--bh:20%; height:20%; background:#3C82F933;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:38%; height:38%; background:#3C82F955; animation-delay:.07s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:60%; height:60%; background:#3C82F966; animation-delay:.14s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:75%; height:75%; background:#3C82F988; animation-delay:.21s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:88%; height:88%; background:#3C82F9aa; animation-delay:.28s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:100%;height:100%;background:#3C82F9; animation-delay:.35s;"></div>
+        </div>
+        <div class="text-xs mt-2 pt-1.5" style="color:#21272D; border-top:1px solid #1C2127">COMMITS: ACTIVE</div>
+      </div>
+
+      <!-- ENTERPRISE — Muted Blue (#677FD3) -->
+      <div class="stat-card flex flex-col p-4 rounded-sm"
+           style="background:#15181C; border:1px solid #677FD322;">
+        <div class="flex justify-between items-start mb-0.5">
+          <span class="text-xs font-bold tracking-widest" style="color:#677FD3">CUSTODY</span>
+          <span class="text-xs" style="color:#677FD355">●</span>
+        </div>
+        <div class="text-xs mb-3" style="color:#677FD3">Enterprise</div>
+        <div class="flex items-end gap-[3px] h-8 mt-auto">
+          <div class="bar flex-1 rounded-sm" style="--bh:50%; height:50%; background:#677FD333;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:62%; height:62%; background:#677FD355; animation-delay:.07s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:70%; height:70%; background:#677FD366; animation-delay:.14s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:82%; height:82%; background:#677FD388; animation-delay:.21s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:91%; height:91%; background:#677FD3aa; animation-delay:.28s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:100%;height:100%;background:#677FD3; animation-delay:.35s;"></div>
+        </div>
+        <div class="text-xs mt-2 pt-1.5" style="color:#21272D; border-top:1px solid #1C2127">AUM: CLASSIFIED</div>
+      </div>
+
+      <!-- SATELLITE — Cyan (#2CCCBF) -->
+      <div class="stat-card flex flex-col p-4 rounded-sm"
+           style="background:#15181C; border:1px solid #2CCCBF22;">
+        <div class="flex justify-between items-start mb-0.5">
+          <span class="text-xs font-bold tracking-widest" style="color:#2CCCBF">SATELLITE</span>
+          <span class="text-xs" style="color:#2CCCBF55">●</span>
+        </div>
+        <div class="text-xs mb-3" style="color:#677FD3">Global Broadcast</div>
+        <div class="flex items-end gap-[3px] h-8 mt-auto">
+          <div class="bar flex-1 rounded-sm" style="--bh:33%; height:33%; background:#2CCCBF33;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:52%; height:52%; background:#2CCCBF55; animation-delay:.07s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:67%; height:67%; background:#2CCCBF66; animation-delay:.14s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:75%; height:75%; background:#2CCCBF88; animation-delay:.21s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:87%; height:87%; background:#2CCCBFaa; animation-delay:.28s;"></div>
+          <div class="bar flex-1 rounded-sm" style="--bh:96%; height:96%; background:#2CCCBF; animation-delay:.35s;"></div>
+        </div>
+        <div class="text-xs mt-2 pt-1.5" style="color:#21272D; border-top:1px solid #1C2127">COVERAGE: GLOBAL</div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Footer -->
+    <div class="text-center mt-12 space-y-3">
+      <p class="text-xs" style="color:#21272D">© 2026 Blockstream Corporation Inc. All rights reserved.</p>
+      <div class="flex gap-4 justify-center text-xs" style="color:#21272D">
+        <a href="/" class="hover:text-gray-600 transition-colors">V1</a>
+        <a href="/landing/v2/" class="hover:text-gray-600 transition-colors">V2</a>
+        <a href="/landing/v3/" class="hover:text-gray-600 transition-colors">V3</a>
+        <span style="color:#00C3FF77">▸ V4</span>
+      </div>
+    </div>
+
+  </section>
+
+</div><!-- /x-data -->
+
+
+<script>
+(function () {
+  'use strict';
+
+  const canvas = document.getElementById('net-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  // Match canvas pixel size to its CSS size (the hero section)
+  function resize() {
+    const hero = document.getElementById('hero');
+    canvas.width  = hero.clientWidth;
+    canvas.height = hero.clientHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const NODES_DEF = [
+    { label: 'Jade',       color: '#00B45A' },
+    { label: 'Liquid',     color: '#46B4A5' },
+    { label: 'Green',      color: '#00C3FF' },
+    { label: 'Lightning',  color: '#3C82F9' },
+    { label: 'Satellite',  color: '#2CCCBF' },
+    { label: 'AMP',        color: '#1CADB2' },
+    { label: 'GDK',        color: '#677FD3' },
+    { label: 'Enterprise', color: '#3C82F9' },
+  ];
+
+  const nodes = NODES_DEF.map(({ label, color }) => ({
+    label, color,
+    x:  60 + Math.random() * (canvas.width  - 120),
+    y:  60 + Math.random() * (canvas.height - 120),
+    vx: (Math.random() - 0.5) * 0.55,
+    vy: (Math.random() - 0.5) * 0.55,
+    r:  label === 'Enterprise' || label === 'Liquid' ? 7 : 5,
+    phase: Math.random() * Math.PI * 2,
+  }));
+
+  // Connection distance scales with screen width
+  const connectDist = () => Math.min(260, canvas.width * 0.38);
+
+  const packets = [];
+  let frame = 0;
+
+  function spawnPacket() {
+    const a = Math.floor(Math.random() * nodes.length);
+    let b;
+    do { b = Math.floor(Math.random() * nodes.length); } while (b === a);
+    packets.push({ from: a, to: b, t: 0, speed: 0.007 + Math.random() * 0.007 });
+  }
+  for (let i = 0; i < 3; i++) spawnPacket();
+
+  function draw(ts) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    frame++;
+    if (frame % 100 === 0) spawnPacket();
+
+    const t    = ts / 1000;
+    const CDIST = connectDist();
+
+    // Edges
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx   = nodes[i].x - nodes[j].x;
+        const dy   = nodes[i].y - nodes[j].y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < CDIST) {
+          const alpha = (1 - dist / CDIST) * 0.13;
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.strokeStyle = `rgba(0,195,255,${alpha})`;
+          ctx.lineWidth   = 0.8;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Packets
+    for (let i = packets.length - 1; i >= 0; i--) {
+      const p = packets[i];
+      p.t += p.speed;
+      if (p.t >= 1) { packets.splice(i, 1); continue; }
+      const from = nodes[p.from];
+      const to   = nodes[p.to];
+      const px = from.x + (to.x - from.x) * p.t;
+      const py = from.y + (to.y - from.y) * p.t;
+      const t2 = Math.max(0, p.t - 0.045);
+      const tx2 = from.x + (to.x - from.x) * t2;
+      const ty2 = from.y + (to.y - from.y) * t2;
+      ctx.beginPath();
+      ctx.moveTo(tx2, ty2);
+      ctx.lineTo(px, py);
+      ctx.strokeStyle = from.color + '66';
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle   = from.color;
+      ctx.shadowBlur  = 10;
+      ctx.shadowColor = from.color;
+      ctx.fill();
+      ctx.shadowBlur  = 0;
+    }
+
+    // Nodes
+    nodes.forEach(node => {
+      const pulse = Math.sin(t * 1.4 + node.phase);
+      const glowR = node.r + 4 + pulse * 2;
+
+      // Glow
+      const grad = ctx.createRadialGradient(node.x, node.y, node.r, node.x, node.y, glowR + 10);
+      grad.addColorStop(0, node.color + '22');
+      grad.addColorStop(1, node.color + '00');
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, glowR + 10, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Ring
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.r + 3.5, 0, Math.PI * 2);
+      ctx.strokeStyle = node.color + '2A';
+      ctx.lineWidth   = 1;
+      ctx.stroke();
+
+      // Core
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+      ctx.fillStyle   = node.color;
+      ctx.shadowBlur  = 14;
+      ctx.shadowColor = node.color;
+      ctx.fill();
+      ctx.shadowBlur  = 0;
+
+      // Highlight
+      ctx.beginPath();
+      ctx.arc(node.x - node.r * 0.28, node.y - node.r * 0.28, node.r * 0.36, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.fill();
+
+      // Label (hide on very narrow screens)
+      if (canvas.width > 360) {
+        ctx.fillStyle  = 'rgba(255,255,255,0.45)';
+        ctx.font       = '10px ui-monospace,"JetBrains Mono",monospace';
+        ctx.textAlign  = 'center';
+        ctx.fillText(node.label, node.x, node.y + node.r + 13);
+      }
+    });
+
+    // Move & bounce
+    nodes.forEach(node => {
+      node.x += node.vx;
+      node.y += node.vy;
+      const pad = 55;
+      if (node.x < pad || node.x > canvas.width  - pad) { node.vx *= -1; node.x = Math.max(pad, Math.min(canvas.width  - pad, node.x)); }
+      if (node.y < pad || node.y > canvas.height - pad) { node.vy *= -1; node.y = Math.max(pad, Math.min(canvas.height - pad, node.y)); }
+    });
+
+    requestAnimationFrame(draw);
+  }
+
+  requestAnimationFrame(draw);
+})();
+</script>
+{% endblock %}

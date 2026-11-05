@@ -1,0 +1,11 @@
+<!-- partials/mark_all_seen_response.html -->
+<!-- Replaces #mark-all-container with a disabled done state after marking all alerts. -->
+<!-- OOB span updates the navbar badge. -->
+<div id="mark-all-container" class="flex gap-2">
+  <span class="px-3 py-1.5 text-xs rounded bg-gray-800 text-gray-500 cursor-not-allowed">
+    All marked ✓
+  </span>
+</div>
+<span id="nav-alert-badge" hx-swap-oob="true">
+  {% if unseen_count %}<span class="ml-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">{{ unseen_count }}</span>{% endif %}
+</span>

@@ -1,0 +1,344 @@
+{
+  "verticals": [
+    {
+      "name": "Wallet (HW)",
+      "slug": "wallet-hw"
+    },
+    {
+      "name": "Wallet (SW)",
+      "slug": "wallet-sw"
+    },
+    {
+      "name": "Sidechain / L2",
+      "slug": "sidechain-l2"
+    },
+    {
+      "name": "Custody",
+      "slug": "custody"
+    },
+    {
+      "name": "R&D / Research",
+      "slug": "rd-research"
+    },
+    {
+      "name": "Satellite",
+      "slug": "satellite"
+    },
+    {
+      "name": "Developer Tooling",
+      "slug": "developer-tooling"
+    }
+  ],
+  "entities": [
+    {
+      "name": "Jade",
+      "slug": "jade",
+      "vertical": "wallet-hw",
+      "is_primary": true,
+      "github_org": "Blockstream",
+      "github_repo": "Jade",
+      "app_store_id": "",
+      "news_keywords": ["Blockstream Jade", "Jade hardware wallet"]
+    },
+    {
+      "name": "Coldcard",
+      "slug": "coldcard",
+      "vertical": "wallet-hw",
+      "is_primary": false,
+      "github_org": "Coldcard",
+      "github_repo": "firmware",
+      "app_store_id": "",
+      "news_keywords": ["Coldcard wallet", "Coldcard hardware wallet"]
+    },
+    {
+      "name": "Trezor Model T",
+      "slug": "trezor-model-t",
+      "vertical": "wallet-hw",
+      "is_primary": false,
+      "github_org": "trezor",
+      "github_repo": "trezor-firmware",
+      "app_store_id": "",
+      "news_keywords": ["Trezor Model T", "Trezor hardware wallet"]
+    },
+    {
+      "name": "Ledger Flex",
+      "slug": "ledger-flex",
+      "vertical": "wallet-hw",
+      "is_primary": false,
+      "github_org": "LedgerHQ",
+      "github_repo": "app-bitcoin-new",
+      "app_store_id": "",
+      "news_keywords": ["Ledger Flex", "Ledger hardware wallet"]
+    },
+    {
+      "name": "Foundation Passport",
+      "slug": "foundation-passport",
+      "vertical": "wallet-hw",
+      "is_primary": false,
+      "github_org": "Foundation-Devices",
+      "github_repo": "passport2",
+      "app_store_id": "",
+      "news_keywords": ["Foundation Passport", "Foundation Devices wallet"]
+    },
+    {
+      "name": "Green Wallet",
+      "slug": "green-wallet",
+      "vertical": "wallet-sw",
+      "is_primary": true,
+      "github_org": "Blockstream",
+      "github_repo": "green_android",
+      "app_store_id": "1402243590",
+      "news_keywords": ["Blockstream Green", "Green wallet Bitcoin"]
+    },
+    {
+      "name": "Muun",
+      "slug": "muun",
+      "vertical": "wallet-sw",
+      "is_primary": false,
+      "github_org": "muun",
+      "github_repo": "apollo",
+      "app_store_id": "1482037683",
+      "news_keywords": ["Muun wallet", "Muun Bitcoin"]
+    },
+    {
+      "name": "Phoenix",
+      "slug": "phoenix",
+      "vertical": "wallet-sw",
+      "is_primary": false,
+      "github_org": "ACINQ",
+      "github_repo": "phoenix",
+      "app_store_id": "1544097028",
+      "news_keywords": ["Phoenix wallet", "ACINQ Phoenix"]
+    },
+    {
+      "name": "BlueWallet",
+      "slug": "bluewallet",
+      "vertical": "wallet-sw",
+      "is_primary": false,
+      "github_org": "BlueWallet",
+      "github_repo": "BlueWallet",
+      "app_store_id": "1376878040",
+      "news_keywords": ["BlueWallet", "Blue Wallet Bitcoin"]
+    },
+    {
+      "name": "Sparrow",
+      "slug": "sparrow",
+      "vertical": "wallet-sw",
+      "is_primary": false,
+      "github_org": "sparrowwallet",
+      "github_repo": "sparrow",
+      "app_store_id": "",
+      "news_keywords": ["Sparrow wallet", "Sparrow Bitcoin"]
+    },
+    {
+      "name": "Wasabi",
+      "slug": "wasabi",
+      "vertical": "wallet-sw",
+      "is_primary": false,
+      "github_org": "WalletWasabi",
+      "github_repo": "WalletWasabi",
+      "app_store_id": "",
+      "news_keywords": ["Wasabi wallet", "Wasabi Bitcoin"]
+    },
+    {
+      "name": "Liquid Network",
+      "slug": "liquid-network",
+      "vertical": "sidechain-l2",
+      "is_primary": true,
+      "github_org": "ElementsProject",
+      "github_repo": "elements",
+      "app_store_id": "",
+      "news_keywords": ["Liquid Network", "Blockstream Liquid"]
+    },
+    {
+      "name": "Rootstock (RSK)",
+      "slug": "rootstock-rsk",
+      "vertical": "sidechain-l2",
+      "is_primary": false,
+      "github_org": "rsksmart",
+      "github_repo": "rskj",
+      "app_store_id": "",
+      "news_keywords": ["Rootstock RSK", "RSK sidechain"]
+    },
+    {
+      "name": "Stacks",
+      "slug": "stacks",
+      "vertical": "sidechain-l2",
+      "is_primary": false,
+      "github_org": "stacks-network",
+      "github_repo": "stacks-core",
+      "app_store_id": "",
+      "news_keywords": ["Stacks blockchain", "Stacks Bitcoin L2"]
+    },
+    {
+      "name": "LND (Lightning)",
+      "slug": "lnd-lightning",
+      "vertical": "sidechain-l2",
+      "is_primary": false,
+      "github_org": "lightningnetwork",
+      "github_repo": "lnd",
+      "app_store_id": "",
+      "news_keywords": ["Lightning Network LND", "Lightning Labs"]
+    },
+    {
+      "name": "CLN (Core Lightning)",
+      "slug": "cln-core-lightning",
+      "vertical": "sidechain-l2",
+      "is_primary": false,
+      "github_org": "ElementsProject",
+      "github_repo": "lightning",
+      "app_store_id": "",
+      "news_keywords": ["Core Lightning CLN", "c-lightning"]
+    },
+    {
+      "name": "Blockstream Custody",
+      "slug": "blockstream-custody",
+      "vertical": "custody",
+      "is_primary": true,
+      "github_org": "",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": ["Blockstream custody", "Blockstream institutional"]
+    },
+    {
+      "name": "BitGo",
+      "slug": "bitgo",
+      "vertical": "custody",
+      "is_primary": false,
+      "github_org": "BitGo",
+      "github_repo": "BitGoJS",
+      "app_store_id": "",
+      "news_keywords": ["BitGo custody", "BitGo Bitcoin"]
+    },
+    {
+      "name": "Copper",
+      "slug": "copper",
+      "vertical": "custody",
+      "is_primary": false,
+      "github_org": "",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": ["Copper.co custody", "Copper crypto custody"]
+    },
+    {
+      "name": "Fireblocks",
+      "slug": "fireblocks",
+      "vertical": "custody",
+      "is_primary": false,
+      "github_org": "fireblocks",
+      "github_repo": "fireblocks-sdk-js",
+      "app_store_id": "",
+      "news_keywords": ["Fireblocks custody", "Fireblocks crypto"]
+    },
+    {
+      "name": "Anchorage",
+      "slug": "anchorage",
+      "vertical": "custody",
+      "is_primary": false,
+      "github_org": "",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": ["Anchorage Digital custody", "Anchorage crypto"]
+    },
+    {
+      "name": "Blockstream Research",
+      "slug": "blockstream-research",
+      "vertical": "rd-research",
+      "is_primary": true,
+      "github_org": "BlockstreamResearch",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": ["Blockstream research", "Blockstream R&D"]
+    },
+    {
+      "name": "Chaincode Labs",
+      "slug": "chaincode-labs",
+      "vertical": "rd-research",
+      "is_primary": false,
+      "github_org": "chaincodelabs",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": ["Chaincode Labs", "Chaincode Bitcoin"]
+    },
+    {
+      "name": "Spiral",
+      "slug": "spiral",
+      "vertical": "rd-research",
+      "is_primary": false,
+      "github_org": "nickolay",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": ["Spiral Bitcoin", "Spiral Block"]
+    },
+    {
+      "name": "HRF Bitcoin Grants",
+      "slug": "hrf-bitcoin-grants",
+      "vertical": "rd-research",
+      "is_primary": false,
+      "github_org": "",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": ["Human Rights Foundation Bitcoin grants", "HRF Bitcoin"]
+    },
+    {
+      "name": "Blockstream Satellite",
+      "slug": "blockstream-satellite",
+      "vertical": "satellite",
+      "is_primary": true,
+      "github_org": "Blockstream",
+      "github_repo": "satellite",
+      "app_store_id": "",
+      "news_keywords": ["Blockstream Satellite", "Bitcoin satellite"]
+    },
+    {
+      "name": "GDK",
+      "slug": "gdk",
+      "vertical": "developer-tooling",
+      "is_primary": true,
+      "github_org": "Blockstream",
+      "github_repo": "gdk",
+      "app_store_id": "",
+      "news_keywords": ["Blockstream GDK", "Green Development Kit"]
+    },
+    {
+      "name": "Bitcoin Dev Kit (BDK)",
+      "slug": "bdk",
+      "vertical": "developer-tooling",
+      "is_primary": false,
+      "github_org": "bitcoindevkit",
+      "github_repo": "bdk",
+      "app_store_id": "",
+      "news_keywords": ["Bitcoin Dev Kit", "BDK Bitcoin"]
+    },
+    {
+      "name": "Libwally",
+      "slug": "libwally",
+      "vertical": "developer-tooling",
+      "is_primary": false,
+      "github_org": "ElementsProject",
+      "github_repo": "libwally-core",
+      "app_store_id": "",
+      "news_keywords": ["libwally", "libwally-core"]
+    },
+    {
+      "name": "rust-bitcoin",
+      "slug": "rust-bitcoin",
+      "vertical": "developer-tooling",
+      "is_primary": false,
+      "github_org": "rust-bitcoin",
+      "github_repo": "rust-bitcoin",
+      "app_store_id": "",
+      "news_keywords": ["rust-bitcoin", "rust bitcoin library"]
+    },
+    {
+      "name": "LDK",
+      "slug": "ldk",
+      "vertical": "developer-tooling",
+      "is_primary": false,
+      "github_org": "lightningdevkit",
+      "github_repo": "rust-lightning",
+      "app_store_id": "",
+      "news_keywords": ["Lightning Dev Kit", "LDK rust-lightning"]
+    }
+  ]
+}

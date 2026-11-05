@@ -1,0 +1,12 @@
+{% load dashboard_tags %}
+<!-- partials/metric_panel.html — standalone metrics display for an entity -->
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+  {% for key, value in metrics.items %}
+  <div class="bg-gray-800 rounded p-3">
+    <div class="text-xs text-gray-500 mb-1">{{ key|metric_label:metric_labels }}</div>
+    <div class="text-base font-bold text-white">{{ value|format_metric:key }}</div>
+  </div>
+  {% empty %}
+  <div class="col-span-3 text-gray-600 text-sm">No metrics available.</div>
+  {% endfor %}
+</div>

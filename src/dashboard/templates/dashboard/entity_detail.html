@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+{% load dashboard_tags %}
+{% block title %}{{ entity.name }} — BlockStream BI{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb: Overview > Vertical > Entity -->
+<nav class="text-xs text-gray-500 mb-4">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white">Dashboard</a>
+  {% if entity.vertical %}
+  <span class="mx-2">/</span>
+  <a href="{% url 'dashboard:vertical_detail' slug=entity.vertical.slug %}"
+     class="hover:text-white">{{ entity.vertical.name }}</a>
+  {% endif %}
+  <span class="mx-2">/</span>
+  <span class="text-gray-300">{{ entity.name }}</span>
+</nav>
+
+<div class="flex items-center gap-3 mb-6">
+  <h1 class="text-2xl font-bold text-white">{{ entity.name }}</h1>
+  {% if entity.is_primary %}
+    <span class="px-2 py-0.5 text-xs bg-brand-500 text-white rounded">Blockstream</span>
+  {% else %}
+    <span class="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded">Competitor</span>
+  {% endif %}
+  {% if entity.vertical %}
+    <span class="px-2 py-0.5 text-xs bg-gray-800 text-gray-400 rounded">{{ entity.vertical.name }}</span>
+  {% endif %}
+  <!-- Watch / Unwatch toggle — HTMX swap keeps the button live without a full reload -->
+  {% include "partials/watch_button.html" with entity=entity is_watched=is_watched %}
+
+  <!-- Momentum badge -->
+  {% if momentum %}
+  <a href="{% url 'dashboard:momentum' %}"
+     class="ml-auto flex items-center gap-2 px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors"
+     title="Composite momentum score — click for leaderboard">
+    <span class="text-[10px] text-gray-500 uppercase tracking-wider">Momentum</span>
+    {% if momentum.score > 0 %}
+    <span class="text-sm font-bold text-emerald-400 font-mono">+{{ momentum.score|floatformat:3 }}</span>
+    {% elif momentum.score < 0 %}
+    <span class="text-sm font-bold text-red-400 font-mono">{{ momentum.score|floatformat:3 }}</span>
+    {% else %}
+    <span class="text-sm font-bold text-gray-500 font-mono">0.000</span>
+    {% endif %}
+    {% if momentum.acceleration is not None %}
+      {% if momentum.acceleration > 0.01 %}
+      <span class="text-emerald-400 text-xs">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+      </span>
+      {% elif momentum.acceleration < -0.01 %}
+      <span class="text-red-400 text-xs">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+      </span>
+      {% endif %}
+    {% endif %}
+  </a>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Left: metrics + sparklines -->
+  <div class="lg:col-span-2 space-y-6">
+
+    <!-- Latest metrics panel -->
+    <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
+      <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Latest Metrics</h2>
+      {% if latest_metrics %}
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {% for key, value in latest_metrics.items %}
+          <div class="bg-gray-800 rounded p-3">
+            <div class="text-xs text-gray-500 mb-1">{{ key|metric_label:metric_labels }}</div>
+            <div class="text-lg font-bold text-white">{{ value|format_metric:key }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-gray-600 text-sm">No metrics yet. Run the fetchers to collect data.</p>
+      {% endif %}
+    </div>
+
+    <!-- Sparklines — Alpine-managed, 30-day fixed window, click navigates to deep-dive chart -->
+    {% if sparkline_keys %}
+    {{ sparkline_keys|json_script:"sparkline-keys" }}
+    <div class="bg-gray-900 rounded-lg border border-gray-800 p-4"
+         x-data="sparklineManager('{{ entity.slug }}', JSON.parse(document.getElementById('sparkline-keys').textContent), {{ entity.is_primary|lower }})"
+         x-init="init()">
+      <div class="flex items-center gap-2 mb-4">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Trends</h2>
+        <button @click="$dispatch('open-help', {
+                  title: 'Metric Trends',
+                  body: `
+                    <p class=\'mb-3\'>Time-series history for every metric collected for this entity. The overview table shows a snapshot — these lines show the <em>trajectory</em>.</p>
+                    <ul class=\'space-y-2 list-none\'>
+                      <li><span class=\'text-white font-semibold\'>Delta badge (▲/▼ %):</span> Change vs ~7 readings ago (roughly one week). Green = improving, red = declining. For <em>Days Since Release</em> the logic flips — a drop is good.</li>
+                      <li><span class=\'text-white font-semibold\'>Deep-dive:</span> Click any sparkline to open a full interactive Plotly chart — range sliders, rolling averages, alert markers, and more.</li>
+                      <li><span class=\'text-white font-semibold\'>Color:</span> <span class=\'text-brand-500\'>Orange</span> = Blockstream product, blue = competitor.</li>
+                    </ul>
+                    <p class=\'mt-3 text-gray-500 text-xs\'>A competitor quietly gaining 500 stars/week is more dangerous than one with a large but static total.</p>
+                  `
+                })"
+                class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                title="What is this chart?">?</button>
+        <span class="ml-auto text-xs text-gray-600">30d · click to deep-dive</span>
+      </div>
+
+      <!-- Sparkline grid — each card navigates to the metric detail page on click -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <template x-for="key in keys" :key="key">
+          <div class="bg-gray-800 rounded p-3 cursor-pointer hover:ring-1 hover:ring-brand-500 transition-all group"
+               @click="navigate(key)">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-gray-500 group-hover:text-gray-300 transition-colors" x-text="labelFor(key)"></span>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono"
+                      :class="deltaClass(key)"
+                      x-text="deltaText(key)"></span>
+                <span class="text-gray-600 group-hover:text-brand-500 transition-colors text-xs">↗</span>
+              </div>
+            </div>
+            <div style="height:60px;position:relative">
+              <canvas :id="'chart-' + key"></canvas>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Right: alerts + news -->
+  <div class="space-y-6">
+
+    <!-- Recent alerts -->
+    <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Recent Alerts</h2>
+        <div class="flex items-center gap-3">
+          {% if recent_alerts %}
+          <button hx-post="{% url 'dashboard:mark_entity_alerts_seen' entity.slug %}"
+                  hx-vals='{"useful": "true"}'
+                  hx-target="#entity-alerts-container"
+                  hx-swap="innerHTML"
+                  title="Dismiss all — mark as useful for GA tuning"
+                  class="text-xs text-emerald-600 hover:text-emerald-400 transition-colors">
+            ✓ All Relevant
+          </button>
+          <button hx-post="{% url 'dashboard:mark_entity_alerts_seen' entity.slug %}"
+                  hx-vals='{"useful": "false"}'
+                  hx-target="#entity-alerts-container"
+                  hx-swap="innerHTML"
+                  title="Dismiss all — mark as noise for GA tuning"
+                  class="text-xs text-amber-600 hover:text-amber-400 transition-colors">
+            ✗ All Noise
+          </button>
+          {% endif %}
+          <a href="{% url 'dashboard:alerts' %}?entity={{ entity.slug }}"
+             class="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+            View all →
+          </a>
+        </div>
+      </div>
+      <div id="entity-alerts-container">
+        {% include "partials/entity_alert_card.html" with alerts=recent_alerts %}
+      </div>
+    </div>
+
+    <!-- News coverage histogram — article count per day for the last 30 days -->
+    <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">News Coverage — 30d</h2>
+        <button onclick="window.dispatchEvent(new CustomEvent('open-help', { detail: {
+                  title: 'News Coverage',
+                  body: '<p class=\'mb-3\'>Daily count of news articles published about this entity over the last 30 days.
+                   Each bar is one day.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-white font-semibold\'>Reading it:
+                   </span> A tall bar signals a media spike — a product launch, partnership, vulnerability disclosure, or controversy.
+                   </li><li><span class=\'text-white font-semibold\'>Cross-reference:</span> Line up spikes with the
+                   metric trend charts to the left. Did a news spike precede a jump in GitHub stars? That is momentum
+                    worth tracking.</li><li><span class=\'text-white font-semibold\'>Live:</span> Updates every
+                    2 minutes as the news fetcher ingests fresh articles.</li></ul><p class=\'mt-3 text-gray-500
+                    text-xs\'>Source: Google News RSS · fetched every 2 hours per entity.</p>'
+                }}))"
+                class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20
+                      text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
+                title="What is this chart?">?</button>
+      </div>
+      <div id="news-histogram-wrap" style="height:120px;position:relative">
+        <canvas id="news-histogram-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Recent news -->
+    <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
+      <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Recent News</h2>
+      {% if recent_news %}
+        <div class="space-y-3">
+          {% for item in recent_news %}
+          <div class="text-xs">
+            <a href="{{ item.url }}" target="_blank" rel="noopener"
+               class="text-blue-400 hover:text-blue-300 line-clamp-2 leading-snug">
+              {{ item.title }}
+            </a>
+            <div class="text-gray-600 mt-0.5">
+              {% if item.source_name %}{{ item.source_name }} · {% endif %}
+              {{ item.published_at|date:"M d, Y"|default:"" }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-gray-600 text-xs">No news yet. Run the news fetcher to collect articles.</p>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{{ metric_labels|json_script:"detail-metric-labels" }}
+<script>
+// ---------------------------------------------------------------------------
+// sparklineManager — Alpine component for the Trends section
+// 30-day fixed window; clicking a card navigates to the Plotly deep-dive page.
+// ---------------------------------------------------------------------------
+function sparklineManager(entitySlug, keys, isPrimary) {
+  // Brand orange for Blockstream products, blue for competitors
+  const LINE_COLOR = isPrimary ? '#f7931a' : '#60a5fa';
+  const LINE_BG    = isPrimary ? 'rgba(247,147,26,0.1)' : 'rgba(96,165,250,0.1)';
+
+  const METRIC_LABELS = JSON.parse(document.getElementById('detail-metric-labels').textContent);
+  // Keys where a lower value is better — delta badge color is inverted
+  const INVERTED = new Set(['github_latest_release_days_ago']);
+
+  return {
+    keys,
+    allData: {},  // { key: { labels: string[], values: number[] } }
+    deltas: {},   // { key: { pct: string, dir: 'up'|'down' } | null }
+    charts: {},   // { key: Chart instance }
+
+    async init() {
+      // Fetch all sparkline series in parallel, then render
+      await Promise.all(this.keys.map(k => this.fetchData(k)));
+      this.$nextTick(() => this.keys.forEach(k => this.renderSparkline(k)));
+    },
+
+    async fetchData(key) {
+      try {
+        const r = await fetch(`/partials/sparkline/${entitySlug}/${key}/`);
+        const data = await r.json();
+        this.allData[key] = data;
+        this.computeDelta(key, data.values);
+      } catch (e) {}
+    },
+
+    computeDelta(key, vals) {
+      if (!vals || vals.length < 2) { this.deltas[key] = null; return; }
+      const latest = vals[vals.length - 1];
+      // Use reading ~7 positions back as the baseline (one reading per fetch cycle ≈ 24h)
+      const lookback = Math.max(0, vals.length - 8);
+      const base = vals[lookback];
+      if (!base) { this.deltas[key] = null; return; }
+      const raw = ((latest - base) / Math.abs(base)) * 100;
+      this.deltas[key] = { pct: Math.abs(raw).toFixed(1), dir: raw >= 0 ? 'up' : 'down' };
+    },
+
+    // Slice the last 30 days of data for sparkline display
+    last30Days(key) {
+      const d = this.allData[key];
+      if (!d || !d.labels.length) return { labels: [], values: [] };
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 30);
+      const cutStr = cutoff.toISOString().slice(0, 10);
+      const start = d.labels.findIndex(l => l >= cutStr);
+      if (start === -1) return { labels: [], values: [] };
+      return { labels: d.labels.slice(start), values: d.values.slice(start) };
+    },
+
+    navigate(key) {
+      window.location.href = `/entity/${entitySlug}/metric/${key}/`;
+    },
+
+    labelFor(key) {
+      return METRIC_LABELS[key] || key;
+    },
+
+    deltaText(key) {
+      const d = this.deltas[key];
+      if (!d) return '';
+      return (d.dir === 'up' ? '▲ +' : '▼ -') + d.pct + '%';
+    },
+
+    deltaClass(key) {
+      const d = this.deltas[key];
+      if (!d) return 'text-gray-600';
+      // For inverted metrics, going up (more days since release) is bad
+      const good = INVERTED.has(key) ? d.dir === 'down' : d.dir === 'up';
+      return good ? 'text-green-400' : 'text-red-400';
+    },
+
+    renderSparkline(key) {
+      const canvas = document.getElementById('chart-' + key);
+      if (!canvas) return;
+      const { labels, values } = this.last30Days(key);
+
+      const cfg = {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            data: values,
+            borderColor: LINE_COLOR,
+            backgroundColor: LINE_BG,
+            borderWidth: 1.5,
+            pointRadius: values.length === 1 ? 3 : 0,
+            tension: 0.3,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                title: ctx => ctx[0].label,
+                label: ctx => ' ' + ctx.parsed.y.toLocaleString()
+              }
+            }
+          },
+          scales: {
+            x: {
+              display: true,
+              ticks: { color: '#6b7280', font: { size: 9 }, maxTicksLimit: 4, maxRotation: 0 },
+              grid: { display: false }
+            },
+            y: {
+              display: true,
+              position: 'right',
+              ticks: { color: '#6b7280', font: { size: 9 }, maxTicksLimit: 3 },
+              grid: { color: 'rgba(255,255,255,0.04)' }
+            }
+          }
+        }
+      };
+
+      if (this.charts[key]) {
+        this.charts[key].data.labels = labels;
+        this.charts[key].data.datasets[0].data = values;
+        this.charts[key].update('active');
+      } else {
+        this.charts[key] = new Chart(canvas, cfg);
+      }
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// News coverage histogram — standalone IIFE with 2-minute auto-refresh
+// ---------------------------------------------------------------------------
+(function initNewsHistogram() {
+  let histChart = null;
+
+  function loadHistogram() {
+    fetch("{% url 'dashboard:partial_news_histogram' entity.slug %}")
+      .then(r => r.json())
+      .then(data => {
+        const wrap = document.getElementById('news-histogram-wrap');
+        const canvas = document.getElementById('news-histogram-chart');
+        if (!canvas) return;
+
+        // If all values are zero, show a placeholder instead of an empty chart
+        if (!data.values.some(v => v > 0)) {
+          wrap.innerHTML = '<p class="text-gray-600 text-xs text-center pt-10">No news coverage data in the last 30 days.</p>';
+          return;
+        }
+
+        const cfg = {
+          type: 'bar',
+          data: {
+            labels: data.labels,
+            datasets: [{
+              data: data.values,
+              backgroundColor: 'rgba(247,147,26,0.7)',
+              borderColor: '#f7931a',
+              borderWidth: 1,
+              borderRadius: 2,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: ctx => ctx[0].label,
+                  label: ctx => ' ' + ctx.parsed.y + ' article' + (ctx.parsed.y !== 1 ? 's' : '')
+                }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: '#6b7280', font: { size: 8 }, maxTicksLimit: 6, maxRotation: 0 },
+                grid: { display: false }
+              },
+              y: {
+                beginAtZero: true,
+                ticks: { color: '#6b7280', font: { size: 9 }, stepSize: 1 },
+                grid: { color: 'rgba(255,255,255,0.04)' }
+              }
+            }
+          }
+        };
+
+        if (histChart) {
+          histChart.data.labels = data.labels;
+          histChart.data.datasets[0].data = data.values;
+          histChart.update('active');
+        } else {
+          histChart = new Chart(canvas, cfg);
+        }
+      })
+      .catch(() => {});
+  }
+
+  loadHistogram();
+  setInterval(loadHistogram, 120000);
+})();
+</script>
+{% endblock %}

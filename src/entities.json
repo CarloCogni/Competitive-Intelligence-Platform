@@ -1,0 +1,661 @@
+{
+  "verticals": [
+    {
+      "name": "Wallet (HW)",
+      "slug": "wallet-hw"
+    },
+    {
+      "name": "Wallet (SW)",
+      "slug": "wallet-sw"
+    },
+    {
+      "name": "Sidechain / L2",
+      "slug": "sidechain-l2"
+    },
+    {
+      "name": "Custody",
+      "slug": "custody"
+    },
+    {
+      "name": "R&D / Research",
+      "slug": "rd-research"
+    },
+    {
+      "name": "Satellite",
+      "slug": "satellite"
+    },
+    {
+      "name": "Developer Tooling",
+      "slug": "developer-tooling"
+    }
+  ],
+  "entities": [
+    {
+      "name": "Jade",
+      "slug": "jade",
+      "vertical": "wallet-hw",
+      "is_primary": true,
+      "github_org": "Blockstream",
+      "github_repo": "Jade",
+      "app_store_id": "",
+      "news_keywords": [
+        "Blockstream Jade",
+        "Jade hardware wallet"
+      ],
+      "twitter_handle": "Blockstream",
+      "reddit_keywords": [
+        "Blockstream Jade",
+        "Jade hardware wallet"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Coldcard",
+      "slug": "coldcard",
+      "vertical": "wallet-hw",
+      "is_primary": false,
+      "github_org": "Coldcard",
+      "github_repo": "firmware",
+      "app_store_id": "",
+      "news_keywords": [
+        "Coldcard wallet",
+        "Coldcard hardware wallet"
+      ],
+      "twitter_handle": "COLDCARDwallet",
+      "reddit_keywords": [
+        "Coldcard wallet",
+        "Coldcard hardware wallet"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Trezor Model T",
+      "slug": "trezor-model-t",
+      "vertical": "wallet-hw",
+      "is_primary": false,
+      "github_org": "trezor",
+      "github_repo": "trezor-firmware",
+      "app_store_id": "",
+      "news_keywords": [
+        "Trezor Model T",
+        "Trezor hardware wallet"
+      ],
+      "twitter_handle": "Trezor",
+      "reddit_keywords": [
+        "Trezor Model T",
+        "Trezor hardware wallet"
+      ],
+      "play_store_id": "io.trezor.suite"
+    },
+    {
+      "name": "Ledger Flex",
+      "slug": "ledger-flex",
+      "vertical": "wallet-hw",
+      "is_primary": false,
+      "github_org": "LedgerHQ",
+      "github_repo": "app-bitcoin-new",
+      "app_store_id": "",
+      "news_keywords": [
+        "Ledger Flex",
+        "Ledger hardware wallet"
+      ],
+      "twitter_handle": "Ledger",
+      "reddit_keywords": [
+        "Ledger Flex",
+        "Ledger hardware wallet"
+      ],
+      "play_store_id": "com.ledger.live"
+    },
+    {
+      "name": "Foundation Passport",
+      "slug": "foundation-passport",
+      "vertical": "wallet-hw",
+      "is_primary": false,
+      "github_org": "Foundation-Devices",
+      "github_repo": "passport2",
+      "app_store_id": "",
+      "news_keywords": [
+        "Foundation Passport",
+        "Foundation Devices wallet"
+      ],
+      "twitter_handle": "FOUNDATIONdvcs",
+      "reddit_keywords": [
+        "Foundation Passport",
+        "Foundation Devices wallet"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Green Wallet",
+      "slug": "green-wallet",
+      "vertical": "wallet-sw",
+      "is_primary": true,
+      "github_org": "Blockstream",
+      "github_repo": "green_android",
+      "app_store_id": "1402243590",
+      "news_keywords": [
+        "Blockstream Green",
+        "Green wallet Bitcoin"
+      ],
+      "twitter_handle": "Blockstream",
+      "reddit_keywords": [
+        "Blockstream Green wallet",
+        "Green wallet Bitcoin"
+      ],
+      "play_store_id": "com.greenaddress.greenbits_android_wallet"
+    },
+    {
+      "name": "Muun",
+      "slug": "muun",
+      "vertical": "wallet-sw",
+      "is_primary": false,
+      "github_org": "muun",
+      "github_repo": "apollo",
+      "app_store_id": "1482037683",
+      "news_keywords": [
+        "Muun wallet",
+        "Muun Bitcoin"
+      ],
+      "twitter_handle": "MuunWallet",
+      "reddit_keywords": [
+        "Muun wallet",
+        "Muun Bitcoin wallet"
+      ],
+      "play_store_id": "io.muun.apollo"
+    },
+    {
+      "name": "Phoenix",
+      "slug": "phoenix",
+      "vertical": "wallet-sw",
+      "is_primary": false,
+      "github_org": "ACINQ",
+      "github_repo": "phoenix",
+      "app_store_id": "1544097028",
+      "news_keywords": [
+        "Phoenix wallet",
+        "ACINQ Phoenix"
+      ],
+      "twitter_handle": "PhoenixWallet",
+      "reddit_keywords": [
+        "Phoenix wallet Bitcoin",
+        "ACINQ Phoenix"
+      ],
+      "play_store_id": "fr.acinq.phoenix.mainnet"
+    },
+    {
+      "name": "BlueWallet",
+      "slug": "bluewallet",
+      "vertical": "wallet-sw",
+      "is_primary": false,
+      "github_org": "BlueWallet",
+      "github_repo": "BlueWallet",
+      "app_store_id": "1376878040",
+      "news_keywords": [
+        "BlueWallet",
+        "Blue Wallet Bitcoin"
+      ],
+      "twitter_handle": "bluewalletio",
+      "reddit_keywords": [
+        "BlueWallet",
+        "Blue Wallet Bitcoin"
+      ],
+      "play_store_id": "io.bluewallet.bluewallet"
+    },
+    {
+      "name": "Sparrow",
+      "slug": "sparrow",
+      "vertical": "wallet-sw",
+      "is_primary": false,
+      "github_org": "sparrowwallet",
+      "github_repo": "sparrow",
+      "app_store_id": "",
+      "news_keywords": [
+        "Sparrow wallet",
+        "Sparrow Bitcoin"
+      ],
+      "twitter_handle": "SparrowWallet",
+      "reddit_keywords": [
+        "Sparrow wallet Bitcoin",
+        "Sparrow Bitcoin wallet"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Wasabi",
+      "slug": "wasabi",
+      "vertical": "wallet-sw",
+      "is_primary": false,
+      "github_org": "WalletWasabi",
+      "github_repo": "WalletWasabi",
+      "app_store_id": "",
+      "news_keywords": [
+        "Wasabi wallet",
+        "Wasabi Bitcoin"
+      ],
+      "twitter_handle": "wasabiwallet",
+      "reddit_keywords": [
+        "Wasabi wallet",
+        "Wasabi coinjoin"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Liquid Network",
+      "slug": "liquid-network",
+      "vertical": "sidechain-l2",
+      "is_primary": true,
+      "github_org": "ElementsProject",
+      "github_repo": "elements",
+      "app_store_id": "",
+      "news_keywords": [
+        "Liquid Network",
+        "Blockstream Liquid"
+      ],
+      "twitter_handle": "Liquid_BTC",
+      "reddit_keywords": [
+        "Liquid Network Bitcoin",
+        "Blockstream Liquid"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Rootstock (RSK)",
+      "slug": "rootstock-rsk",
+      "vertical": "sidechain-l2",
+      "is_primary": false,
+      "github_org": "rsksmart",
+      "github_repo": "rskj",
+      "app_store_id": "",
+      "news_keywords": [
+        "Rootstock RSK",
+        "RSK sidechain"
+      ],
+      "twitter_handle": "rootstock_io",
+      "reddit_keywords": [
+        "Rootstock RSK",
+        "RSK Bitcoin sidechain"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Stacks",
+      "slug": "stacks",
+      "vertical": "sidechain-l2",
+      "is_primary": false,
+      "github_org": "stacks-network",
+      "github_repo": "stacks-core",
+      "app_store_id": "",
+      "news_keywords": [
+        "Stacks blockchain",
+        "Stacks Bitcoin L2"
+      ],
+      "twitter_handle": "Stacks",
+      "reddit_keywords": [
+        "Stacks blockchain",
+        "Stacks Bitcoin L2"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "LND (Lightning)",
+      "slug": "lnd-lightning",
+      "vertical": "sidechain-l2",
+      "is_primary": false,
+      "github_org": "lightningnetwork",
+      "github_repo": "lnd",
+      "app_store_id": "",
+      "news_keywords": [
+        "Lightning Network LND",
+        "Lightning Labs"
+      ],
+      "twitter_handle": "lightning",
+      "reddit_keywords": [
+        "Lightning Network LND",
+        "Lightning Labs bitcoin"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "CLN (Core Lightning)",
+      "slug": "cln-core-lightning",
+      "vertical": "sidechain-l2",
+      "is_primary": false,
+      "github_org": "ElementsProject",
+      "github_repo": "lightning",
+      "app_store_id": "",
+      "news_keywords": [
+        "Core Lightning CLN",
+        "c-lightning"
+      ],
+      "twitter_handle": "",
+      "reddit_keywords": [
+        "Core Lightning CLN",
+        "c-lightning bitcoin"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Blockstream Custody",
+      "slug": "blockstream-custody",
+      "vertical": "custody",
+      "is_primary": true,
+      "github_org": "",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": [
+        "Blockstream custody",
+        "Blockstream institutional"
+      ],
+      "twitter_handle": "Blockstream",
+      "reddit_keywords": [
+        "Blockstream custody",
+        "Blockstream institutional"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "BitGo",
+      "slug": "bitgo",
+      "vertical": "custody",
+      "is_primary": false,
+      "github_org": "BitGo",
+      "github_repo": "BitGoJS",
+      "app_store_id": "",
+      "news_keywords": [
+        "BitGo custody",
+        "BitGo Bitcoin"
+      ],
+      "twitter_handle": "BitGo",
+      "reddit_keywords": [
+        "BitGo custody",
+        "BitGo Bitcoin"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Copper",
+      "slug": "copper",
+      "vertical": "custody",
+      "is_primary": false,
+      "github_org": "",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": [
+        "Copper.co custody",
+        "Copper crypto custody"
+      ],
+      "twitter_handle": "",
+      "reddit_keywords": [
+        "Copper.co custody",
+        "Copper crypto custody"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Fireblocks",
+      "slug": "fireblocks",
+      "vertical": "custody",
+      "is_primary": false,
+      "github_org": "fireblocks",
+      "github_repo": "fireblocks-sdk-js",
+      "app_store_id": "",
+      "news_keywords": [
+        "Fireblocks custody",
+        "Fireblocks crypto"
+      ],
+      "twitter_handle": "Fireblocks",
+      "reddit_keywords": [
+        "Fireblocks custody",
+        "Fireblocks crypto"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Anchorage",
+      "slug": "anchorage",
+      "vertical": "custody",
+      "is_primary": false,
+      "github_org": "",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": [
+        "Anchorage Digital custody",
+        "Anchorage crypto"
+      ],
+      "twitter_handle": "",
+      "reddit_keywords": [
+        "Anchorage Digital custody",
+        "Anchorage crypto"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Blockstream Research",
+      "slug": "blockstream-research",
+      "vertical": "rd-research",
+      "is_primary": true,
+      "github_org": "BlockstreamResearch",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": [
+        "Blockstream research",
+        "Blockstream R&D"
+      ],
+      "twitter_handle": "Blockstream",
+      "reddit_keywords": [
+        "Blockstream research",
+        "Blockstream R&D"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Chaincode Labs",
+      "slug": "chaincode-labs",
+      "vertical": "rd-research",
+      "is_primary": false,
+      "github_org": "chaincodelabs",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": [
+        "Chaincode Labs",
+        "Chaincode Bitcoin"
+      ],
+      "twitter_handle": "ChaincodeLabs",
+      "reddit_keywords": [
+        "Chaincode Labs Bitcoin",
+        "Chaincode Bitcoin research"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Spiral",
+      "slug": "spiral",
+      "vertical": "rd-research",
+      "is_primary": false,
+      "github_org": "nickolay",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": [
+        "Spiral Bitcoin",
+        "Spiral Block"
+      ],
+      "twitter_handle": "spiralbtc",
+      "reddit_keywords": [
+        "Spiral Bitcoin grants",
+        "Spiral Block bitcoin"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "HRF Bitcoin Grants",
+      "slug": "hrf-bitcoin-grants",
+      "vertical": "rd-research",
+      "is_primary": false,
+      "github_org": "",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": [
+        "Human Rights Foundation Bitcoin grants",
+        "HRF Bitcoin"
+      ],
+      "twitter_handle": "HRF",
+      "reddit_keywords": [
+        "HRF Bitcoin grants",
+        "Human Rights Foundation Bitcoin"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Blockstream Satellite",
+      "slug": "blockstream-satellite",
+      "vertical": "satellite",
+      "is_primary": true,
+      "github_org": "Blockstream",
+      "github_repo": "satellite",
+      "app_store_id": "",
+      "news_keywords": [
+        "Blockstream Satellite",
+        "Bitcoin satellite"
+      ],
+      "twitter_handle": "Blockstream",
+      "reddit_keywords": [
+        "Blockstream Satellite",
+        "Bitcoin satellite Blockstream"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Helium Network",
+      "slug": "helium",
+      "vertical": "satellite",
+      "is_primary": false,
+      "github_org": "helium",
+      "github_repo": "HIP",
+      "app_store_id": "",
+      "news_keywords": [
+        "Helium Network",
+        "Helium IoT satellite"
+      ],
+      "twitter_handle": "helium",
+      "reddit_keywords": [
+        "Helium Network satellite",
+        "Helium HNT IoT"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Othernet",
+      "slug": "othernet",
+      "vertical": "satellite",
+      "is_primary": false,
+      "github_org": "Othernet-Research",
+      "github_repo": "",
+      "app_store_id": "",
+      "news_keywords": [
+        "Othernet satellite broadcast",
+        "Othernet data radio"
+      ],
+      "twitter_handle": "othernet",
+      "reddit_keywords": [
+        "Othernet satellite",
+        "Outernet data broadcast"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "GDK",
+      "slug": "gdk",
+      "vertical": "developer-tooling",
+      "is_primary": true,
+      "github_org": "Blockstream",
+      "github_repo": "gdk",
+      "app_store_id": "",
+      "news_keywords": [
+        "Blockstream GDK",
+        "Green Development Kit"
+      ],
+      "twitter_handle": "Blockstream",
+      "reddit_keywords": [
+        "Blockstream GDK",
+        "Green Development Kit Bitcoin"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Bitcoin Dev Kit (BDK)",
+      "slug": "bdk",
+      "vertical": "developer-tooling",
+      "is_primary": false,
+      "github_org": "bitcoindevkit",
+      "github_repo": "bdk",
+      "app_store_id": "",
+      "news_keywords": [
+        "Bitcoin Dev Kit",
+        "BDK Bitcoin"
+      ],
+      "twitter_handle": "bitcoindevkit",
+      "reddit_keywords": [
+        "Bitcoin Dev Kit BDK",
+        "BDK rust bitcoin"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "Libwally",
+      "slug": "libwally",
+      "vertical": "developer-tooling",
+      "is_primary": false,
+      "github_org": "ElementsProject",
+      "github_repo": "libwally-core",
+      "app_store_id": "",
+      "news_keywords": [
+        "libwally",
+        "libwally-core"
+      ],
+      "twitter_handle": "",
+      "reddit_keywords": [
+        "libwally",
+        "libwally-core bitcoin"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "rust-bitcoin",
+      "slug": "rust-bitcoin",
+      "vertical": "developer-tooling",
+      "is_primary": false,
+      "github_org": "rust-bitcoin",
+      "github_repo": "rust-bitcoin",
+      "app_store_id": "",
+      "news_keywords": [
+        "rust-bitcoin",
+        "rust bitcoin library"
+      ],
+      "twitter_handle": "",
+      "reddit_keywords": [
+        "rust-bitcoin library",
+        "rust bitcoin crate"
+      ],
+      "play_store_id": ""
+    },
+    {
+      "name": "LDK",
+      "slug": "ldk",
+      "vertical": "developer-tooling",
+      "is_primary": false,
+      "github_org": "lightningdevkit",
+      "github_repo": "rust-lightning",
+      "app_store_id": "",
+      "news_keywords": [
+        "Lightning Dev Kit",
+        "LDK rust-lightning"
+      ],
+      "twitter_handle": "lightningdevkit",
+      "reddit_keywords": [
+        "Lightning Dev Kit LDK",
+        "rust-lightning bitcoin"
+      ],
+      "play_store_id": ""
+    }
+  ]
+}

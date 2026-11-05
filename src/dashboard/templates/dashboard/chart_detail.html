@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+{% block title %}{{ entity.name }} — {{ metric_label }} — BlockStream BI{% endblock %}
+
+{% block content %}
+<!-- Full Plotly.js (overrides the plotly-basic loaded in base.html) -->
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+<!-- Breadcrumb -->
+<nav class="text-xs text-gray-500 mb-4 flex items-center gap-1 flex-wrap">
+  <a href="{% url 'dashboard:main_dashboard' %}" class="hover:text-white">Dashboard</a>
+  {% if entity.vertical %}
+  <span>/</span>
+  <a href="{% url 'dashboard:vertical_detail' slug=entity.vertical.slug %}" class="hover:text-white">{{ entity.vertical.name }}</a>
+  {% endif %}
+  <span>/</span>
+  <a href="{% url 'dashboard:entity_detail' slug=entity.slug %}" class="hover:text-white">{{ entity.name }}</a>
+  <span>/</span>
+  <span class="text-gray-300">{{ metric_label }}</span>
+</nav>
+
+<!-- Page header -->
+<div class="flex items-center gap-3 mb-6 flex-wrap">
+  <h1 class="text-2xl font-bold text-white">{{ metric_label }}</h1>
+  {% if entity.is_primary %}
+    <span class="px-2 py-0.5 text-xs bg-brand-500 text-white rounded">{{ entity.name }}</span>
+  {% else %}
+    <span class="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded">{{ entity.name }}</span>
+  {% endif %}
+  {% if is_inverted %}
+    <span class="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-300 rounded border border-blue-700/40"
+          title="For this metric, a lower value means better performance">↓ Lower is better</span>
+  {% endif %}
+</div>
+
+<!-- Stat summary bar -->
+{% if stats %}
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">Current</div>
+    <div class="text-lg font-bold text-white" id="stat-current">{{ stats.current|floatformat:0 }}</div>
+  </div>
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">7d Change</div>
+    <div class="text-lg font-bold {% if stats.change_7d_pct is not None %}{% if is_inverted %}{% if stats.change_7d_pct < 0 %}text-green-400{% elif stats.change_7d_pct > 0 %}text-red-400{% else %}text-gray-400{% endif %}{% else %}{% if stats.change_7d_pct > 0 %}text-green-400{% elif stats.change_7d_pct < 0 %}text-red-400{% else %}text-gray-400{% endif %}{% endif %}{% else %}text-gray-600{% endif %}">
+      {% if stats.change_7d_pct is not None %}
+        {% if stats.change_7d_pct > 0 %}+{% endif %}{{ stats.change_7d_pct }}%
+      {% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">30d Change</div>
+    <div class="text-lg font-bold {% if stats.change_30d_pct is not None %}{% if is_inverted %}{% if stats.change_30d_pct < 0 %}text-green-400{% elif stats.change_30d_pct > 0 %}text-red-400{% else %}text-gray-400{% endif %}{% else %}{% if stats.change_30d_pct > 0 %}text-green-400{% elif stats.change_30d_pct < 0 %}text-red-400{% else %}text-gray-400{% endif %}{% endif %}{% else %}text-gray-600{% endif %}">
+      {% if stats.change_30d_pct is not None %}
+        {% if stats.change_30d_pct > 0 %}+{% endif %}{{ stats.change_30d_pct }}%
+      {% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">Min</div>
+    <div class="text-lg font-bold text-white">{{ stats.min|floatformat:0 }}</div>
+  </div>
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">Max</div>
+    <div class="text-lg font-bold text-white">{{ stats.max|floatformat:0 }}</div>
+  </div>
+  <div class="bg-gray-900 rounded-lg border border-gray-800 p-3">
+    <div class="text-xs text-gray-500 mb-1">Average</div>
+    <div class="text-lg font-bold text-white">{{ stats.avg|floatformat:0 }}</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Main chart -->
+<div class="bg-gray-900 rounded-lg border border-gray-800 p-4 mb-6">
+  <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+    <div class="flex items-center gap-2">
+      <span class="text-sm font-semibold text-gray-400 uppercase tracking-wider">{{ metric_label }} over time</span>
+    </div>
+    <!-- Overlay toggles -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="text-xs text-gray-600">Overlays:</span>
+      <button id="btn-avg7" onclick="toggleOverlay('avg7')"
+              class="px-2 py-0.5 text-xs rounded border border-gray-700 text-gray-400 hover:border-brand-500 hover:text-brand-500 transition-colors">
+        7d avg
+      </button>
+      <button id="btn-avg30" onclick="toggleOverlay('avg30')"
+              class="px-2 py-0.5 text-xs rounded border border-gray-700 text-gray-400 hover:border-brand-500 hover:text-brand-500 transition-colors">
+        30d avg
+      </button>
+      <button id="btn-trend" onclick="toggleOverlay('trend')"
+              class="px-2 py-0.5 text-xs rounded border border-gray-700 text-gray-400 hover:border-brand-500 hover:text-brand-500 transition-colors">
+        Trend line
+      </button>
+    </div>
+  </div>
+  <div id="main-chart" style="height:480px;"></div>
+</div>
+
+<!-- Comparison panel -->
+{% if comparison_series_json != '[]' %}
+<div class="bg-gray-900 rounded-lg border border-gray-800 p-4 mb-6">
+  <div class="flex items-center gap-3 mb-4">
+    <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Compare with others</h2>
+    <span class="text-xs text-gray-600">Toggle entities to overlay on the chart above</span>
+  </div>
+  <div id="comparison-buttons" class="flex flex-wrap gap-2"></div>
+</div>
+{% endif %}
+
+<!-- Data inline — |safe prevents Django from HTML-escaping the JSON double-quotes -->
+<script id="primary-series-data" type="application/json">{{ primary_series_json|safe }}</script>
+<script id="comparison-series-data" type="application/json">{{ comparison_series_json|safe }}</script>
+<script id="alerts-data" type="application/json">{{ alerts_json|safe }}</script>
+
+<script>
+// ---------------------------------------------------------------------------
+// Chart detail — full interactive Plotly chart
+// ---------------------------------------------------------------------------
+
+const PRIMARY_COLOR  = '{{ entity.is_primary|yesno:"#f7931a,#60a5fa" }}';
+const PRIMARY_FILL   = '{{ entity.is_primary|yesno:"rgba(247,147,26,0.12),rgba(96,165,250,0.12)" }}';
+const IS_INVERTED    = {{ is_inverted|lower }};
+const ENTITY_NAME    = '{{ entity.name|escapejs }}';
+const METRIC_LABEL   = '{{ metric_label|escapejs }}';
+
+// Competitor color palette — muted tones so the primary entity stands out
+const COMP_COLORS = ['#a78bfa','#34d399','#fb923c','#f472b6','#38bdf8','#facc15','#4ade80','#c084fc'];
+
+// ---------------------------------------------------------------------------
+// Math utilities
+// ---------------------------------------------------------------------------
+
+function rollingMean(values, window) {
+  return values.map((_, i) => {
+    const slice = values.slice(Math.max(0, i - window + 1), i + 1);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+  });
+}
+
+function linearRegression(labels, values) {
+  // Returns {slope, intercept} using 0-based index for x
+  const n = values.length;
+  if (n < 2) return null;
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += i; sumY += values[i];
+    sumXY += i * values[i]; sumX2 += i * i;
+  }
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
+}
+
+function trendLineValues(labels, values) {
+  const reg = linearRegression(labels, values);
+  if (!reg) return [];
+  return values.map((_, i) => reg.intercept + reg.slope * i);
+}
+
+// ---------------------------------------------------------------------------
+// Chart state
+// ---------------------------------------------------------------------------
+
+const primaryData  = JSON.parse(document.getElementById('primary-series-data').textContent);
+const compData     = JSON.parse(document.getElementById('comparison-series-data').textContent);
+const alertsData   = JSON.parse(document.getElementById('alerts-data').textContent);
+
+// Track which comparison entities are active: slug → trace index in Plotly
+const activeComps = {};
+
+// Trace indices for overlay layers (appended after primary at known positions)
+const TRACE_IDX = { primary: 0, avg7: 1, avg30: 2, trend: 3 };
+// Tracks visibility state of overlay toggles
+const overlayVisible = { avg7: false, avg30: false, trend: false };
+
+// ---------------------------------------------------------------------------
+// Build initial traces
+// ---------------------------------------------------------------------------
+
+function buildPrimaryTrace(labels, values) {
+  return {
+    x: labels,
+    y: values,
+    type: 'scatter',
+    mode: 'lines',
+    name: ENTITY_NAME,
+    line: { color: PRIMARY_COLOR, width: 2, shape: 'spline', smoothing: 0.4 },
+    fill: 'tozeroy',
+    fillcolor: PRIMARY_FILL,
+    hovertemplate: '<b>%{x}</b><br>' + METRIC_LABEL + ': <b>%{y:,.0f}</b><extra>' + ENTITY_NAME + '</extra>',
+  };
+}
+
+function buildRollingTrace(labels, values, window, name, color) {
+  const rolled = rollingMean(values, window);
+  return {
+    x: labels,
+    y: rolled,
+    type: 'scatter',
+    mode: 'lines',
+    name,
+    visible: false,
+    line: { color, width: 1.5, dash: 'dash' },
+    hovertemplate: '<b>%{x}</b><br>' + name + ': <b>%{y:,.0f}</b><extra></extra>',
+  };
+}
+
+function buildTrendTrace(labels, values) {
+  const trendY = trendLineValues(labels, values);
+  return {
+    x: labels,
+    y: trendY,
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Trend',
+    visible: false,
+    line: { color: '#6b7280', width: 1.5, dash: 'dot' },
+    hovertemplate: '<b>%{x}</b><br>Trend: <b>%{y:,.0f}</b><extra></extra>',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Alert annotations
+// ---------------------------------------------------------------------------
+
+function buildAnnotations() {
+  return alertsData.map(a => ({
+    x: a.date,
+    yref: 'paper',
+    y: 1,
+    yanchor: 'top',
+    text: '⚡',
+    showarrow: true,
+    arrowhead: 0,
+    arrowcolor: '#fbbf24',
+    arrowsize: 0.7,
+    ax: 0,
+    ay: -20,
+    font: { size: 11, color: '#fbbf24' },
+    hovertext: a.message,
+    hoverlabel: { bgcolor: '#1f2937', bordercolor: '#fbbf24', font: { color: '#f3f4f6' } },
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Chart layout
+// ---------------------------------------------------------------------------
+
+function buildLayout() {
+  return {
+    paper_bgcolor: '#111827',
+    plot_bgcolor: '#1f2937',
+    font: { color: '#9ca3af', size: 11 },
+    margin: { t: 20, r: 60, b: 80, l: 70 },
+    xaxis: {
+      color: '#6b7280',
+      gridcolor: 'rgba(255,255,255,0.04)',
+      tickfont: { size: 10, color: '#6b7280' },
+      showspikes: true,
+      spikecolor: 'rgba(255,255,255,0.2)',
+      spikethickness: 1,
+      spikedash: 'dot',
+      spikemode: 'across',
+      rangeslider: { bgcolor: '#111827', bordercolor: '#374151', borderwidth: 1, thickness: 0.07 },
+      rangeselector: {
+        bgcolor: '#1f2937',
+        bordercolor: '#374151',
+        borderwidth: 1,
+        activecolor: '#f7931a',
+        font: { color: '#9ca3af', size: 10 },
+        buttons: [
+          { count: 7,  step: 'day',   stepmode: 'backward', label: '7D' },
+          { count: 1,  step: 'month', stepmode: 'backward', label: '1M' },
+          { count: 3,  step: 'month', stepmode: 'backward', label: '3M' },
+          { count: 1,  step: 'year',  stepmode: 'backward', label: '1Y' },
+          { step: 'all', label: 'All' },
+        ],
+      },
+    },
+    yaxis: {
+      color: '#6b7280',
+      gridcolor: 'rgba(255,255,255,0.06)',
+      tickfont: { size: 10, color: '#6b7280' },
+      tickformat: ',.0f',
+      showspikes: true,
+      spikecolor: 'rgba(255,255,255,0.2)',
+      spikethickness: 1,
+      spikedash: 'dot',
+      spikemode: 'across',
+      side: 'left',
+    },
+    legend: {
+      bgcolor: 'rgba(17,24,39,0.8)',
+      bordercolor: '#374151',
+      borderwidth: 1,
+      font: { color: '#9ca3af', size: 10 },
+      orientation: 'h',
+      x: 0,
+      y: -0.18,
+    },
+    hovermode: 'x unified',
+    hoverlabel: {
+      bgcolor: '#1f2937',
+      bordercolor: '#374151',
+      font: { color: '#f3f4f6', size: 11 },
+    },
+    annotations: buildAnnotations(),
+    modebar: {
+      bgcolor: 'rgba(17,24,39,0)',
+      color: '#6b7280',
+      activecolor: '#f7931a',
+    },
+  };
+}
+
+const chartConfig = {
+  responsive: true,
+  displaylogo: false,
+  modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'],
+  toImageButtonOptions: {
+    format: 'png',
+    filename: ENTITY_NAME + '_' + METRIC_LABEL,
+    height: 600,
+    width: 1200,
+    scale: 2,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------------
+
+const { labels: pLabels, values: pValues } = primaryData;
+
+const traces = [
+  buildPrimaryTrace(pLabels, pValues),
+  buildRollingTrace(pLabels, pValues, 7,  '7d rolling avg',  '#a78bfa'),
+  buildRollingTrace(pLabels, pValues, 30, '30d rolling avg', '#34d399'),
+  buildTrendTrace(pLabels, pValues),
+];
+
+Plotly.newPlot('main-chart', traces, buildLayout(), chartConfig);
+
+// ---------------------------------------------------------------------------
+// Overlay toggle buttons
+// ---------------------------------------------------------------------------
+
+function toggleOverlay(name) {
+  overlayVisible[name] = !overlayVisible[name];
+  const idx = TRACE_IDX[name];
+  const btn = document.getElementById('btn-' + name);
+  Plotly.restyle('main-chart', { visible: overlayVisible[name] }, [idx]);
+  if (overlayVisible[name]) {
+    btn.classList.add('border-brand-500', 'text-brand-500');
+    btn.classList.remove('border-gray-700', 'text-gray-400');
+  } else {
+    btn.classList.remove('border-brand-500', 'text-brand-500');
+    btn.classList.add('border-gray-700', 'text-gray-400');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Comparison entity buttons
+// ---------------------------------------------------------------------------
+
+const compContainer = document.getElementById('comparison-buttons');
+if (compContainer && compData.length) {
+  compData.forEach((series, i) => {
+    const color = series.is_primary ? '#f7931a' : COMP_COLORS[i % COMP_COLORS.length];
+    const btn = document.createElement('button');
+    btn.id = 'comp-btn-' + series.slug;
+    btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:5px;"></span>${series.name}`;
+    btn.className = 'px-3 py-1 text-xs rounded border border-gray-700 text-gray-400 hover:border-gray-500 transition-colors';
+    btn.title = 'Toggle ' + series.name + ' on chart';
+    btn.onclick = () => toggleComparison(series, color, btn);
+    compContainer.appendChild(btn);
+  });
+}
+
+function toggleComparison(series, color, btn) {
+  const slug = series.slug;
+  if (activeComps[slug] !== undefined) {
+    // Remove trace
+    Plotly.deleteTraces('main-chart', activeComps[slug]);
+    // Shift indices for traces added after the removed one
+    Object.keys(activeComps).forEach(s => {
+      if (activeComps[s] > activeComps[slug]) activeComps[s]--;
+    });
+    delete activeComps[slug];
+    btn.classList.remove('border-white', 'text-white');
+    btn.classList.add('border-gray-700', 'text-gray-400');
+  } else {
+    // Add trace
+    const trace = {
+      x: series.labels,
+      y: series.values,
+      type: 'scatter',
+      mode: 'lines',
+      name: series.name,
+      line: { color, width: 1.5, shape: 'spline', smoothing: 0.4 },
+      opacity: 0.75,
+      hovertemplate: '<b>%{x}</b><br>' + METRIC_LABEL + ': <b>%{y:,.0f}</b><extra>' + series.name + '</extra>',
+    };
+    // Append and record the new index
+    const currentTraces = document.getElementById('main-chart').data;
+    activeComps[slug] = currentTraces.length;
+    Plotly.addTraces('main-chart', trace);
+    btn.classList.add('border-white', 'text-white');
+    btn.classList.remove('border-gray-700', 'text-gray-400');
+  }
+}
+</script>
+{% endblock %}

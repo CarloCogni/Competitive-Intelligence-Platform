@@ -1,0 +1,54 @@
+{% load dashboard_tags %}
+{% if briefing.is_in_progress %}
+<div id="briefing-status-{{ briefing.pk }}"
+     hx-get="{% url 'dashboard:partial_briefing_status' briefing.pk %}"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML"
+     class="bg-gray-900 border border-gray-800 rounded-lg p-10 text-center">
+
+  <div class="flex flex-col items-center gap-3">
+    <svg class="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+    </svg>
+    <p class="text-sm text-gray-400">
+      {% if briefing.status == "pending" %}
+        Queued &mdash; waiting for scheduler&hellip;
+      {% else %}
+        Generating briefing with <span class="text-gray-300">{{ briefing.model_used|default:"Ollama" }}</span>&hellip;
+      {% endif %}
+    </p>
+    <p class="text-xs text-gray-600">This can take 30&ndash;120 seconds depending on hardware.</p>
+  </div>
+
+</div>
+
+{% elif briefing.status == "ready" %}
+<div id="briefing-status-{{ briefing.pk }}"
+     class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+
+  <div class="flex items-center gap-4 text-xs text-gray-500 mb-4 pb-4 border-b border-gray-800">
+    <span>{{ briefing.period_start|date:"M j" }} &ndash; {{ briefing.period_end|date:"M j, Y" }}</span>
+    <span>{{ briefing.alert_count }} alert{{ briefing.alert_count|pluralize }}</span>
+    <span>{{ briefing.entity_count }} entit{{ briefing.entity_count|pluralize:"y,ies" }}</span>
+    <span>{{ briefing.news_count }} headline{{ briefing.news_count|pluralize }}</span>
+    <span class="ml-auto text-gray-700">{{ briefing.model_used }}</span>
+  </div>
+
+  <div class="briefing-prose text-sm leading-relaxed">{{ briefing.content|render_markdown|safe }}</div>
+
+  <p class="text-xs text-gray-700 mt-4 pt-3 border-t border-gray-800">
+    Generated {{ briefing.generated_at|timesince }} ago
+  </p>
+</div>
+
+{% else %}
+<div id="briefing-status-{{ briefing.pk }}"
+     class="bg-red-950 border border-red-800 rounded-lg p-6">
+  <h2 class="text-sm font-semibold text-red-400 mb-2">Generation Failed</h2>
+  <p class="text-xs text-gray-400">{{ briefing.error_message|default:"Unknown error." }}</p>
+  <p class="text-xs text-gray-600 mt-3">
+    Ensure Ollama is running: <code class="text-gray-400">ollama serve</code>
+  </p>
+</div>
+{% endif %}

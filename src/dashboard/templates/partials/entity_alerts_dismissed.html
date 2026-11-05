@@ -1,0 +1,5 @@
+<!-- partials/entity_alerts_dismissed.html -->
+<!-- Replaces the entity alert container after "Dismiss all" is fired. -->
+<!-- OOB span updates the navbar badge. -->
+<p class="text-gray-600 text-xs">No active alerts.</p>
+<span id="nav-alert-badge" hx-swap-oob="true">{% if unseen_count %}<span class="ml-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">{{ unseen_count }}</span>{% endif %}</span>

@@ -1,0 +1,36 @@
+<!-- partials/sparkline.html — Chart.js sparkline container for a single metric -->
+<div class="bg-gray-800 rounded p-3">
+  <div class="text-xs text-gray-500 mb-2">{{ metric_key }}</div>
+  <canvas id="sparkline-{{ entity_slug }}-{{ metric_key }}" height="50"></canvas>
+</div>
+
+<script>
+(function() {
+  fetch("{% url 'dashboard:partial_sparkline' entity_slug metric_key %}")
+    .then(r => r.json())
+    .then(function(data) {
+      var canvas = document.getElementById("sparkline-{{ entity_slug }}-{{ metric_key }}");
+      if (!canvas || !data.values.length) return;
+      new Chart(canvas, {
+        type: "line",
+        data: {
+          labels: data.labels,
+          datasets: [{
+            data: data.values,
+            borderColor: "#f7931a",
+            backgroundColor: "rgba(247,147,26,0.1)",
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.3,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { x: { display: false }, y: { display: false } }
+        }
+      });
+    });
+})();
+</script>

@@ -1,0 +1,117 @@
+{% load dashboard_tags %}
+<!-- partials/entity_table.html — HTMX swap target for the overview entity table -->
+<div id="entity-table" class="overflow-x-auto relative">
+  <table class="w-full text-xs border-collapse">
+
+    <!-- Group header row -->
+    <thead>
+      <tr class="border-b border-gray-800/50">
+        <!-- Sticky: Name + Vertical spacer -->
+        <th class="sticky left-0 z-20 bg-gray-950" colspan="2"></th>
+        <!-- Shadow overlay column -->
+        <th class="sticky z-10 bg-transparent w-0 p-0" style="left:calc(var(--sticky-w, 220px))"></th>
+        {% for group in metric_groups %}
+        <th colspan="{{ group.keys|length }}"
+            class="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-center
+                   {% if forloop.counter|divisibleby:2 %}text-gray-500{% else %}text-gray-400{% endif %}">
+          {{ group.label }}
+        </th>
+        {% endfor %}
+        <th></th>
+      </tr>
+
+      <!-- Metric column headers -->
+      <tr class="text-left text-[10px] text-gray-500 uppercase tracking-wider border-b border-gray-700">
+        <!-- Sticky: Name -->
+        <th class="sticky left-0 z-20 bg-gray-950 pb-2 pr-3 min-w-[140px]">
+          <a href="#"
+             hx-get="{% url 'dashboard:partial_entity_table' %}"
+             hx-vals='{"sort": "name"}'
+             hx-target="#entity-table"
+             hx-swap="outerHTML"
+             class="hover:text-white {% if current_sort == 'name' %}text-white{% endif %}">Name</a>
+        </th>
+        <!-- Sticky: Vertical -->
+        <th class="sticky z-20 bg-gray-950 pb-2 pr-3 min-w-[80px]" style="left:140px">
+          <span class="text-gray-600">Vertical</span>
+        </th>
+        <!-- Shadow column: zero-width cell that casts a shadow on the sticky edge -->
+        <th class="sticky z-10 w-0 p-0 pb-2" style="left:220px;
+            box-shadow: 8px 0 16px -4px rgba(0,0,0,0.5);"></th>
+
+        {% for group in metric_groups %}
+          {% for key in group.keys %}
+          <th class="pb-2 px-2 text-right whitespace-nowrap
+                     {% if forloop.parentloop.counter|divisibleby:2 %}bg-gray-900/30{% endif %}">
+            <a href="#"
+               hx-get="{% url 'dashboard:partial_entity_table' %}"
+               hx-vals='{"sort": "{{ key }}"}'
+               hx-target="#entity-table"
+               hx-swap="outerHTML"
+               class="hover:text-white {% if current_sort == key %}text-white{% endif %}">
+              {{ key|metric_label:metric_labels }}
+            </a>
+          </th>
+          {% endfor %}
+        {% endfor %}
+        <th class="pb-2"></th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for entity in entities %}
+      <tr class="border-b border-gray-800/40 hover:bg-gray-800/40 transition-colors
+                 {% if forloop.counter|divisibleby:2 %}bg-gray-900/20{% endif %}"
+          data-vertical="{{ entity.vertical.slug|default:'' }}"
+          data-name="{{ entity.name|lower }}"
+          x-show="(currentVertical === '' || currentVertical === '{{ entity.vertical.slug|default:'' }}') && (searchQuery === '' || $el.dataset.name.includes(searchQuery.toLowerCase()))">
+
+        <!-- Sticky: Name -->
+        <td class="sticky left-0 z-10 py-2 pr-3 font-medium text-sm
+                   {% if forloop.counter|divisibleby:2 %}bg-gray-950/95{% else %}bg-gray-950{% endif %}
+                   backdrop-blur-sm">
+          <a href="{% url 'dashboard:entity_detail' entity.slug %}" class="hover:text-brand-500 transition-colors">
+            {{ entity.name }}
+          </a>
+          {% if entity.is_primary %}
+            <span class="ml-1 text-[10px] text-brand-500" title="Blockstream product">●</span>
+          {% endif %}
+        </td>
+
+        <!-- Sticky: Vertical -->
+        <td class="sticky z-10 py-2 pr-3 text-gray-500 text-[10px]
+                   {% if forloop.counter|divisibleby:2 %}bg-gray-950/95{% else %}bg-gray-950{% endif %}
+                   backdrop-blur-sm"
+            style="left:140px">
+          {% if entity.vertical %}{{ entity.vertical.name }}{% else %}—{% endif %}
+        </td>
+
+        <!-- Shadow column -->
+        <td class="sticky z-[5] w-0 p-0" style="left:220px;
+            box-shadow: 8px 0 16px -4px rgba(0,0,0,0.5);"></td>
+
+        <!-- Metric values -->
+        {% for group in metric_groups %}
+          {% for key in group.keys %}
+          <td class="py-2 px-2 text-right text-gray-300 whitespace-nowrap tabular-nums
+                     {% if forloop.parentloop.counter|divisibleby:2 %}bg-gray-900/30{% endif %}">
+            {{ entity.latest_metrics|get_item:key|format_metric:key }}
+          </td>
+          {% endfor %}
+        {% endfor %}
+
+        <!-- Detail link -->
+        <td class="py-2 pl-2">
+          <a href="{% url 'dashboard:entity_detail' entity.slug %}" class="text-xs text-gray-600 hover:text-brand-500">→</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="99" class="py-8 text-center text-gray-600">
+          No entities found. Run <code class="text-gray-400">python manage.py seed</code> to load entities.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

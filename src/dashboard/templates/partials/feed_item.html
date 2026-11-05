@@ -1,0 +1,15 @@
+<!-- partials/feed_item.html — a single news article in the feed -->
+<div class="bg-gray-900 border border-gray-800 rounded p-3">
+  <a href="{{ item.url }}" target="_blank" rel="noopener"
+     class="text-sm text-blue-400 hover:text-blue-300 leading-snug block mb-1">
+    {{ item.title }}
+  </a>
+  <div class="flex flex-wrap gap-2 items-center text-xs text-gray-600">
+    {% if item.source_name %}<span>{{ item.source_name }}</span>{% endif %}
+    {% if item.published_at %}<span>{{ item.published_at|date:"M d, Y" }}</span>{% endif %}
+    {% for entity in item.entities.all %}
+      <a href="{% url 'dashboard:entity_detail' entity.slug %}"
+         class="px-1.5 py-0.5 bg-gray-800 rounded hover:bg-gray-700">{{ entity.name }}</a>
+    {% endfor %}
+  </div>
+</div>

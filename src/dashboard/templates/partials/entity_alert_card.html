@@ -1,0 +1,120 @@
+{% load dashboard_tags %}
+<!-- partials/entity_alert_card.html — compact alert cards for the entity detail sidebar. -->
+<!-- Expects: alerts (queryset/list), hide_entity_link always implied True here. -->
+
+{% if alerts %}
+<div class="space-y-1.5">
+  {% for alert in alerts %}
+  <div class="alert-card border-l-4 rounded-lg px-3 py-2.5 bg-gray-950 border border-gray-800/60
+              {% if alert.alert_type == 'compound_spike' %}border-l-purple-500
+              {% elif alert.alert_type == 'metric_spike' %}border-l-yellow-500
+              {% elif alert.alert_type == 'new_release' %}border-l-green-500
+              {% elif alert.alert_type == 'new_repo' %}border-l-teal-500
+              {% elif alert.alert_type == 'news_surge' %}border-l-blue-500
+              {% elif alert.alert_type == 'competitor_new' %}border-l-cyan-500
+              {% else %}border-l-gray-600{% endif %}">
+
+    <!-- Top row: type badge · severity · unseen dot — timestamp + actions -->
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-1 flex-wrap min-w-0">
+
+        <span class="text-xs px-1.5 py-0.5 rounded shrink-0
+          {% if alert.alert_type == 'metric_spike' %}bg-yellow-900/60 text-yellow-300
+          {% elif alert.alert_type == 'new_release' %}bg-green-900/60 text-green-300
+          {% elif alert.alert_type == 'new_repo' %}bg-teal-900/60 text-teal-300
+          {% elif alert.alert_type == 'news_surge' %}bg-blue-900/60 text-blue-300
+          {% elif alert.alert_type == 'competitor_new' %}bg-cyan-900/60 text-cyan-300
+          {% elif alert.alert_type == 'compound_spike' %}bg-purple-900/60 text-purple-300
+          {% else %}bg-gray-800 text-gray-400{% endif %}">
+          {{ alert.get_alert_type_display }}
+        </span>
+
+        {% with sev=alert.metadata.severity %}{% if sev %}
+        <span class="text-xs px-1.5 py-0.5 rounded font-semibold shrink-0
+          {% if sev == 'HIGH' %}bg-red-900 text-red-300
+          {% elif sev == 'MEDIUM' %}bg-orange-900 text-orange-300
+          {% else %}bg-yellow-900/60 text-yellow-400{% endif %}">
+          {{ sev }}
+        </span>
+        {% endif %}{% endwith %}
+
+        <!-- Unseen dot -->
+        {% if not alert.seen %}
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" title="New"></span>
+        {% endif %}
+
+      </div>
+
+      <!-- Timestamp + action buttons -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <span class="text-xs text-gray-600 tabular-nums">{{ alert.created_at|timesince }} ago</span>
+
+        <!-- Promote — competitor alerts only -->
+        {% if alert.alert_type == 'competitor_new' and alert.metadata.candidate_id %}
+        <div id="promote-btn-{{ alert.pk }}">
+          <button title="Promote {{ alert.metadata.candidate_name }} to a tracked entity"
+                  class="px-2 py-0.5 text-xs rounded bg-green-900 border border-green-700
+                         text-green-300 hover:bg-green-800 transition-colors"
+                  hx-post="{% url 'dashboard:promote_candidate' alert.metadata.candidate_id %}"
+                  hx-vals='{"from_alert": "true"}'
+                  hx-target="#promote-btn-{{ alert.pk }}"
+                  hx-swap="innerHTML">
+            Promote
+          </button>
+        </div>
+        {% endif %}
+
+        <!-- ✓ Relevant -->
+        <button title="Relevant — positive GA signal"
+                class="text-emerald-500 hover:text-emerald-300 hover:bg-emerald-900/30
+                       text-xs font-semibold px-1.5 py-0.5 rounded transition-colors"
+                hx-post="{% url 'dashboard:mark_alert_seen' alert.pk %}"
+                hx-vals='{"useful": "true"}'
+                hx-target="closest .alert-card"
+                hx-swap="outerHTML swap:200ms">
+          ✓
+        </button>
+
+        <!-- ✗ Noise -->
+        <button title="Noise — negative GA signal"
+                class="text-amber-500 hover:text-amber-300 hover:bg-amber-900/30
+                       text-xs font-semibold px-1.5 py-0.5 rounded transition-colors"
+                hx-post="{% url 'dashboard:mark_alert_seen' alert.pk %}"
+                hx-vals='{"useful": "false"}'
+                hx-target="closest .alert-card"
+                hx-swap="outerHTML swap:200ms">
+          ✗
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Message -->
+    <p class="text-xs text-gray-300 leading-snug mt-1.5 line-clamp-2">{{ alert.message }}</p>
+
+    <!-- Compound spike conditions -->
+    {% if alert.alert_type == 'compound_spike' and alert.metadata.conditions %}
+    <div class="flex flex-wrap gap-1 mt-1">
+      {% for cond in alert.metadata.conditions %}
+      <span class="text-xs px-1 py-0.5 rounded bg-purple-900/50 text-purple-300">
+        {{ cond.metric_key }}
+        {% if cond.actual_delta_pct > 0 %}+{% endif %}{{ cond.actual_delta_pct }}%
+      </span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Release link -->
+    {% if alert.metadata.release_url %}
+    <a href="{{ alert.metadata.release_url }}" target="_blank" rel="noopener noreferrer"
+       class="text-xs text-green-400 hover:text-green-300 transition-colors inline-block mt-1">
+      View release →
+    </a>
+    {% endif %}
+
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-gray-600 text-xs py-4 text-center">No alerts yet.</p>
+{% endif %}
