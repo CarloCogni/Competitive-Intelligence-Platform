@@ -1,6 +1,6 @@
 [project]
 name = "compintel"
-version = "0.1.0"
+version = "1.0.0"
 description = "Competitive intelligence dashboard aggregating public signals (GitHub, news, app stores) for tracked organisations"
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.13"
@@ -37,6 +37,7 @@ testpaths = ["src"]
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["*/migrations/*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]

@@ -119,19 +119,28 @@ class BriefingConfig(models.Model):
     ollama_model = models.CharField(
         max_length=100,
         default="gemma4:e4b",
-        help_text="Ollama model identifier, e.g. 'gemma4:e4b'. Used when provider is Ollama or Auto.",
+        help_text=(
+            "Ollama model identifier, e.g. 'gemma4:e4b'. Used when "
+            "provider is Ollama or Auto."
+        ),
     )
 
     # --- Groq settings ---
     groq_api_key = models.CharField(
         max_length=200,
         blank=True,
-        help_text="Groq API key (https://console.groq.com/keys). Stored in DB; never committed to .env.",
+        help_text=(
+            "Groq API key (https://console.groq.com/keys). Stored in DB; "
+            "never committed to .env."
+        ),
     )
     groq_model = models.CharField(
         max_length=100,
         default="llama-3.3-70b-versatile",
-        help_text="Groq model identifier. Free-tier options: llama-3.3-70b-versatile, llama-3.1-8b-instant.",
+        help_text=(
+            "Groq model identifier. Free-tier options: "
+            "llama-3.3-70b-versatile, llama-3.1-8b-instant."
+        ),
     )
 
     # --- Data window ---

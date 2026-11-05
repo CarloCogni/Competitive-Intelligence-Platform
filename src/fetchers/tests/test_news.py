@@ -1,5 +1,5 @@
 # fetchers/tests/test_news.py
-"""Tests for NewsFetcher. requests.get and feedparser.parse() are mocked to avoid real network calls."""
+"""Tests for NewsFetcher. requests.get and feedparser.parse() are mocked (no network calls)."""
 
 from unittest.mock import MagicMock, patch
 

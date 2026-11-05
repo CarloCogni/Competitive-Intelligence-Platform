@@ -99,12 +99,18 @@ class Entity(models.Model):
         default=list,
         blank=True,
         validators=[validate_keyword_list],
-        help_text="List of keywords to search on Reddit (e.g. ['Blockstream Jade', 'Jade wallet']).",
+        help_text=(
+            "List of keywords to search on Reddit (e.g. ['Blockstream "
+            "Jade', 'Jade wallet'])."
+        ),
     )
     play_store_id = models.CharField(
         max_length=200,
         blank=True,
-        help_text="Google Play Store package name (e.g. 'com.greenaddress.greenbits_android_wallet').",
+        help_text=(
+            "Google Play Store package name (e.g. "
+            "'com.greenaddress.greenbits_android_wallet')."
+        ),
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

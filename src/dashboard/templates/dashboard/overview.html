@@ -19,7 +19,7 @@
     </div>
 
     <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3">
-      <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Blockstream</p>
+      <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">{{ primary_org }}</p>
       <p class="text-2xl font-bold text-brand-500">{{ primary_count }}</p>
       <p class="text-xs text-gray-600 mt-0.5">own products</p>
     </div>
@@ -60,7 +60,7 @@
                   body: `
                     <p class=\'mb-3\'>Ranks all tracked entities by the currently selected metric — stars, forks, open issues, app rating, and more.</p>
                     <ul class=\'space-y-2 list-none\'>
-                      <li><span class=\'text-brand-500 font-semibold\'>Reading it:</span> Longer bar = higher value. <span class=\'text-brand-500\'>Orange</span> bars are Blockstream products; gray bars are competitors.</li>
+                      <li><span class=\'text-brand-500 font-semibold\'>Reading it:</span> Longer bar = higher value. <span class=\'text-brand-500\'>Orange</span> bars are {{ primary_org|escapejs }} products; gray bars are competitors.</li>
                       <li><span class=\'text-white font-semibold\'>Sorting:</span> Click any column header in the table below — the chart switches metric automatically.</li>
                       <li><span class=\'text-white font-semibold\'>Navigation:</span> Click a bar to open that entity\'s detail page.</li>
                       <li><span class=\'text-white font-semibold\'>Live data:</span> Refreshes every 60 seconds in the background — no page reload, no flicker. The countdown in the top-right shows exactly when the next update fires.</li>

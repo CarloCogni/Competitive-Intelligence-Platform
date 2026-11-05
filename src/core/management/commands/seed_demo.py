@@ -37,9 +37,9 @@ User = get_user_model()
 # Demo admin credentials
 ADMIN_USERNAME = "batman"
 ADMIN_PASSWORD = "the hero we deserve"
-ADMIN_EMAIL = "batman@blockstream.local"
+ADMIN_EMAIL = "batman@example.com"
 
-# Fake GA run definitions: (months_ago, fitness, rules_produced, labeled_pos, labeled_neg, generations)
+# Fake GA runs: (months_ago, fitness, rules_produced, labeled_pos, labeled_neg, generations)
 GA_RUN_SPECS = [
     (4, 0.35, 3, 10, 30, 40),
     (3, 0.52, 4, 18, 42, 40),

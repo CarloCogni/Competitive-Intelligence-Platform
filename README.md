@@ -1,5 +1,7 @@
 # Competitive Intelligence Dashboard
 
+[![CI](https://github.com/CarloCogni/Competitive-Intelligence-Platform/actions/workflows/ci.yml/badge.svg)](https://github.com/CarloCogni/Competitive-Intelligence-Platform/actions/workflows/ci.yml) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+
 An open-source competitive intelligence dashboard that aggregates public signals (GitHub metrics, news, app store data) for a set of tracked organisations and their competitors. Pre-loaded with Blockstream and its competitors across seven product verticals.
 
 ---
@@ -63,6 +65,8 @@ uv run python src/manage.py runserver
 Open http://localhost:8000 — the overview page loads immediately.
 
 **Want to see it with real history?** The dashboards become meaningful after days of data collection. A pre-populated demo database is attached to the [latest Release](https://github.com/CarloCogni/Competitive-Intelligence-Platform/releases/latest): download `db.sqlite3.zip`, unzip it into `src/`, then run `migrate` and `runserver`. Log in with `batman` / `the hero we deserve`.
+
+> **Warning:** the demo superuser's password is public. Use `seed_demo` and the demo database for local evaluation only — never on an internet-facing deployment. For a real deployment, create your own admin with `uv run python src/manage.py createsuperuser`.
 
 ---
 
@@ -156,6 +160,17 @@ Edit `src/entities.json`:
 ```
 
 Then re-run `python manage.py seed` — it is idempotent and will only add new rows.
+
+### Tracking your own organisation
+
+Entities with `"is_primary": true` are *your* products; everything else is a competitor. Set your organisation's name in `.env` — it is used in dashboard labels ("<name> vs Competitors") and in the LLM prompts for briefings and competitor detection:
+
+```bash
+PRIMARY_ORG_NAME=Acme
+PRIMARY_ORG_DESCRIPTION=a developer-tools company
+```
+
+Both default to the bundled Blockstream demo dataset.
 
 ---
 

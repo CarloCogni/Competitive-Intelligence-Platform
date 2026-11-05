@@ -37,45 +37,14 @@ logger = logging.getLogger(__name__)
 _NEXT_URL = "/dashboard/"
 
 
-def landing_v1(request: HttpRequest) -> HttpResponse:
-    """Public landing page — Design V1: Satoshi Terminal.
+def landing(request: HttpRequest) -> HttpResponse:
+    """Public landing page: typewriter headline, stat blocks and a canvas node network.
 
     Redirects authenticated users directly to the dashboard overview.
     """
     if request.user.is_authenticated:
         return redirect("dashboard:main_dashboard")
-    return render(request, "landing/v1_satoshi_terminal.html", {"next": _NEXT_URL})
-
-
-def landing_v2(request: HttpRequest) -> HttpResponse:
-    """Public landing page — Design V2: Liquid Glass.
-
-    Redirects authenticated users directly to the dashboard overview.
-    """
-    if request.user.is_authenticated:
-        return redirect("dashboard:main_dashboard")
-    return render(request, "landing/v2_liquid_glass.html", {"next": _NEXT_URL})
-
-
-def landing_v3(request: HttpRequest) -> HttpResponse:
-    """Public landing page — Design V3: Network Intelligence.
-
-    Redirects authenticated users directly to the dashboard overview.
-    """
-    if request.user.is_authenticated:
-        return redirect("dashboard:main_dashboard")
-    return render(request, "landing/v3_network_intelligence.html", {"next": _NEXT_URL})
-
-
-def landing_v4(request: HttpRequest) -> HttpResponse:
-    """Public landing page — Design V4: Blockstream Network (V1 + V3 hybrid, Blockstream palette).
-
-    Combines V1's typewriter headline and stat blocks with V3's canvas node network,
-    using Blockstream's official blue/teal/cyan colour palette.
-    """
-    if request.user.is_authenticated:
-        return redirect("dashboard:main_dashboard")
-    return render(request, "landing/v4_blockstream_network.html", {"next": _NEXT_URL})
+    return render(request, "landing/landing.html", {"next": _NEXT_URL})
 
 
 @login_required
@@ -353,7 +322,8 @@ def metric_chart_peers(request: HttpRequest, entity_slug: str, metric_key: str) 
     JSON endpoint returning all entities' full reading history for a given metric key.
 
     Used by the competitor overlay panel on the metric deep-dive page.
-    Response: { peers: [{ entity_id, entity_name, slug, is_primary, is_current, labels, values }, ...] }
+    Response: { peers: [{ entity_id, entity_name, slug, is_primary, is_current,
+                          labels, values }, ...] }
     """
     entity_ids = (
         Metric.objects.filter(key=metric_key).values_list("entity_id", flat=True).distinct()
@@ -575,7 +545,7 @@ def alerts(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_POST
 def mark_all_alerts_seen(request: HttpRequest) -> HttpResponse:
-    """Mark every unseen alert as Relevant or Noise for GA training, scoped to the active watchlist."""
+    """Mark every unseen alert in the active watchlist as Relevant or Noise (GA training)."""
     # Parse GA feedback signal from POST
     useful_raw = request.POST.get("useful")
     useful: bool | None = (
@@ -1464,7 +1434,7 @@ def _build_dashboard_context(request: HttpRequest) -> dict:
     )
     severity_low = max(0, unseen_alert_count - severity_high - severity_medium)
 
-    # Trend keys and their labels for the JS side (raw Python objects — json_script handles encoding)
+    # Trend keys and labels for the JS side (raw Python objects; json_script encodes them)
     trend_keys = EXEC_TREND_KEYS
     trend_labels = {k: METRIC_LABELS.get(k, k) for k in EXEC_TREND_KEYS}
 
@@ -1602,7 +1572,7 @@ def partial_exec_radar(request: HttpRequest) -> JsonResponse:
 @login_required
 def partial_exec_severity(request: HttpRequest) -> JsonResponse:
     """
-    Returns alert severity distribution for unseen alerts (per-user), scoped to the active watchlist.
+    Returns severity distribution of the user's unseen alerts, scoped to the active watchlist.
 
     Matches the KPI card counts so numbers are consistent across the dashboard.
     Response: { high: int, medium: int, low: int }

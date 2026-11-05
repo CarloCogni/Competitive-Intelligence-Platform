@@ -16,11 +16,14 @@ BriefingGenerator — pulls the last N days of Alert, Metric, and NewsItem
 
 import logging
 from datetime import timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import requests
 from django.conf import settings
 from django.utils import timezone
+
+if TYPE_CHECKING:
+    from briefings.models import BriefingConfig, WeeklyBriefing
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +31,8 @@ logger = logging.getLogger(__name__)
 # Prompt constants
 # ---------------------------------------------------------------------------
 
-_SYSTEM_PROMPT = """\
-You are a competitive intelligence analyst for Blockstream, a Bitcoin infrastructure company.
+_SYSTEM_PROMPT_TEMPLATE = """\
+You are a competitive intelligence analyst for {org_name}, {org_description}.
 Your job is to synthesize raw competitive signals into a concise, actionable weekly briefing
 for the product and strategy teams.
 
@@ -39,6 +42,15 @@ Rules:
 - Use markdown formatting exactly as requested.
 - Keep the total briefing under 400 words.
 """
+
+
+def _system_prompt() -> str:
+    """Return the briefing system prompt for the configured primary organisation."""
+    return _SYSTEM_PROMPT_TEMPLATE.format(
+        org_name=settings.PRIMARY_ORG_NAME,
+        org_description=settings.PRIMARY_ORG_DESCRIPTION,
+    )
+
 
 _OUTPUT_INSTRUCTIONS = """\
 ---
@@ -345,7 +357,7 @@ class BriefingGenerator:
 
             user_context = self._build_context_block(data, cutoff, now)
             content = self.client.chat(
-                system=_SYSTEM_PROMPT,
+                system=_system_prompt(),
                 user=user_context + "\n\n" + _OUTPUT_INSTRUCTIONS,
             )
 

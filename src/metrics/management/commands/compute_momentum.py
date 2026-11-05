@@ -62,7 +62,8 @@ class Command(BaseCommand):
         for rank, r in enumerate(results, 1):
             accel_str = f"{r['acceleration']:+.4f}" if r["acceleration"] is not None else "   n/a"
             self.stdout.write(
-                f"{rank:<5} {r['entity_name']:<35} {r['score']:>+8.4f} {accel_str:>8} {r['metrics_used']:>5}/15"
+                f"{rank:<5} {r['entity_name']:<35} {r['score']:>+8.4f} "
+                f"{accel_str:>8} {r['metrics_used']:>5}/15"
             )
 
         self.stdout.write(f"\n{len(results)} entity/entities scored.")

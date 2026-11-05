@@ -504,11 +504,7 @@ base.html                          # Nav, sidebar, CDN links, block content
 
 | URL | View | Description |
 |-----|------|-------------|
-| `/` | `landing_v4` | Default landing page (Blockstream palette design) |
-| `/landing/v1/` | `landing_v1` | Landing design V1: Satoshi Terminal |
-| `/landing/v2/` | `landing_v2` | Landing design V2: Liquid Glass |
-| `/landing/v3/` | `landing_v3` | Landing design V3: Network Intelligence |
-| `/landing/v4/` | `landing_v4` | Landing design V4: Blockstream Network |
+| `/` | `landing` | Public landing page (redirects to the dashboard when logged in) |
 
 All landing views redirect authenticated users to `/dashboard/`.
 

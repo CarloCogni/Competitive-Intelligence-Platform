@@ -9,10 +9,7 @@ app_name = "dashboard"
 
 urlpatterns = [
     # Public landing pages (no auth required)
-    path("", views.landing_v4, name="landing"),
-    path("landing/v1/", views.landing_v1, name="landing_v1"),
-    path("landing/v2/", views.landing_v2, name="landing_v2"),
-    path("landing/v3/", views.landing_v3, name="landing_v3"),
+    path("", views.landing, name="landing"),
     # Full-page views
     path("dashboard/", views.main_dashboard, name="main_dashboard"),
     path("landscape/", views.landscape_view, name="landscape"),

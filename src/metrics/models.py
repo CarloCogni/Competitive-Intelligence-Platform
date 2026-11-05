@@ -308,7 +308,10 @@ class CandidateEntity(models.Model):
     category = models.CharField(
         max_length=20,
         blank=True,
-        help_text="LLM-assigned category: competitor, exchange, wallet, protocol, infrastructure, media, other.",
+        help_text=(
+            "LLM-assigned category: competitor, exchange, wallet, "
+            "protocol, infrastructure, media, other."
+        ),
     )
     relevance_score = models.PositiveSmallIntegerField(
         null=True,
@@ -444,7 +447,10 @@ class MomentumScore(models.Model):
     metrics_used = models.IntegerField(help_text="Number of metric keys that contributed.")
     detail = models.JSONField(
         default=dict,
-        help_text='Per-metric breakdown: {"key": {"velocity": float, "z_score": float, "weight": float}, ...}',
+        help_text=(
+            'Per-metric breakdown: {"key": {"velocity": float, '
+            '"z_score": float, "weight": float}, ...}'
+        ),
     )
     computed_at = models.DateTimeField(default=timezone.now)
 
@@ -458,7 +464,10 @@ class MomentumScore(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.entity} momentum={self.score:+.3f} ({self.metrics_used} metrics) @ {self.computed_at:%Y-%m-%d}"
+        return (
+            f"{self.entity} momentum={self.score:+.3f} "
+            f"({self.metrics_used} metrics) @ {self.computed_at:%Y-%m-%d}"
+        )
 
 
 class MomentumConfig(models.Model):

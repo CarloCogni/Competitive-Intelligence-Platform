@@ -305,7 +305,10 @@ class TestAnomalyLLMReviewer:
     def test_review_markdown_fenced_json(self, ollama_client):
         """LLM response wrapped in ```json fences is parsed correctly."""
         resp.add(resp.GET, OLLAMA_TAGS_URL, json={"models": []}, status=200)
-        fenced = '```json\n{"verdict": "warn", "reason": "slightly flat", "recommended_contamination": 0.07}\n```'
+        fenced = (
+            '```json\n{"verdict": "warn", "reason": "slightly flat", '
+            '"recommended_contamination": 0.07}\n```'
+        )
         resp.add(
             resp.POST,
             OLLAMA_CHAT_URL,

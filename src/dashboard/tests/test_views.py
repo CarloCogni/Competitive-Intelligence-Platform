@@ -211,30 +211,10 @@ class TestPartialEndpoints:
 class TestLandingViews:
     """Tests for landing page views — unauthenticated renders and authenticated redirects."""
 
-    def test_landing_v1_unauthenticated(self, db):
-        c = Client()
-        response = c.get(reverse("dashboard:landing_v1"))
-        assert response.status_code == 200
-
-    def test_landing_v2_unauthenticated(self, db):
-        c = Client()
-        response = c.get(reverse("dashboard:landing_v2"))
-        assert response.status_code == 200
-
-    def test_landing_v3_unauthenticated(self, db):
-        c = Client()
-        response = c.get(reverse("dashboard:landing_v3"))
-        assert response.status_code == 200
-
     def test_landing_default_unauthenticated(self, db):
         c = Client()
         response = c.get(reverse("dashboard:landing"))
         assert response.status_code == 200
-
-    def test_landing_v1_authenticated_redirects(self, client):
-        response = client.get(reverse("dashboard:landing_v1"))
-        assert response.status_code == 302
-        assert "/dashboard/" in response.url
 
     def test_landing_default_authenticated_redirects(self, client):
         response = client.get(reverse("dashboard:landing"))
@@ -593,7 +573,7 @@ class TestNewsIntelligenceView:
         assert response.status_code == 200
 
     def test_news_items_in_context(self, client, db):
-        item = NewsItemFactory(sentiment="positive")
+        NewsItemFactory(sentiment="positive")
         url = reverse("dashboard:news_intelligence")
         response = client.get(url)
         assert "news_items" in response.context

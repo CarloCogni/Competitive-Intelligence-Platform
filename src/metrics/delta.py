@@ -612,7 +612,7 @@ _SYSTEM_PROMPT_OVERHEAD = 2_000
 
 # System prompt for LLM-based competitor extraction (with entity list placeholder)
 _COMPETITOR_SYSTEM_PROMPT = """\
-You are a competitive intelligence analyst for Blockstream, a Bitcoin infrastructure company.
+You are a competitive intelligence analyst for {org_name}, {org_description}.
 You are analyzing news articles to identify companies, products, protocols, or organisations \
 that could be competitors or relevant entities in the Bitcoin, cryptocurrency, blockchain, \
 and fintech space.
@@ -625,8 +625,9 @@ NOT in the tracked list above.
 
 For each extracted entity provide:
 - name: the canonical company or product name (clean, no trailing words like "Inc" or "Ltd")
-- category: one of "competitor", "exchange", "wallet", "protocol", "infrastructure", "media", "other"
-- relevance: integer 1-10 indicating competitive relevance to Blockstream \
+- category: one of "competitor", "exchange", "wallet", "protocol", "infrastructure", \
+  "media", "other"
+- relevance: integer 1-10 indicating competitive relevance to {org_name} \
   (10 = direct competitor in Bitcoin wallets/mining/sidechains, 1 = barely related)
 - reason: one-sentence explanation of why this entity matters competitively
 
@@ -728,7 +729,11 @@ def _llm_extract_competitors(
 
     # Build the tracked-entities list for the system prompt
     tracked_list = "\n".join(f"- {n}" for n in sorted(tracked_names))
-    system = _COMPETITOR_SYSTEM_PROMPT.format(tracked_entities=tracked_list)
+    system = _COMPETITOR_SYSTEM_PROMPT.format(
+        tracked_entities=tracked_list,
+        org_name=settings.PRIMARY_ORG_NAME,
+        org_description=settings.PRIMARY_ORG_DESCRIPTION,
+    )
 
     # Build numbered article list for the user prompt
     lines = [f"Analyze these {len(batch)} articles and extract competitor entities:\n"]

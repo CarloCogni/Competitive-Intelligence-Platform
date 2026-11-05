@@ -37,6 +37,8 @@ env = environ.Env(
     DEFAULT_FROM_EMAIL=(str, "noreply@compintel.local"),
     SITE_URL=(str, "http://localhost:8000"),
     NEWS_ENRICHMENT_OLLAMA_ONLY=(bool, True),
+    PRIMARY_ORG_NAME=(str, "Blockstream"),
+    PRIMARY_ORG_DESCRIPTION=(str, "a Bitcoin infrastructure company"),
 )
 environ.Env.read_env(BASE_DIR.parent / ".env")
 
@@ -48,6 +50,13 @@ GITHUB_TOKEN: str = env("GITHUB_TOKEN")
 NEWS_API_KEY: str = env("NEWS_API_KEY")
 TWITTER_BEARER_TOKEN: str = env("TWITTER_BEARER_TOKEN")
 RUN_SCHEDULER: bool = env("RUN_SCHEDULER")
+
+# ---------------------------------------------------------------------------
+# Primary organisation — whose products are flagged is_primary in entities.json.
+# Used in UI labels ("<org> vs Competitors") and in LLM prompts.
+# ---------------------------------------------------------------------------
+PRIMARY_ORG_NAME: str = env("PRIMARY_ORG_NAME")
+PRIMARY_ORG_DESCRIPTION: str = env("PRIMARY_ORG_DESCRIPTION")
 
 # ---------------------------------------------------------------------------
 # Ollama — local LLM service for AI-powered features
@@ -132,6 +141,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "dashboard.context_processors.primary_org",
             ],
         },
     },

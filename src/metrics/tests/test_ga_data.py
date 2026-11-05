@@ -206,8 +206,6 @@ class TestBuildHistoricalEvents:
     @freeze_time("2025-06-01 12:00:00")
     def test_recent_undismissed_alert_labeled_none(self, entity):
         """A recent alert (<LABEL_GRACE_DAYS) with no dismissal is labeled None."""
-        now = timezone.now()
-
         _seed_metrics(
             entity,
             "github_stars",
@@ -228,7 +226,7 @@ class TestBuildHistoricalEvents:
         )
 
         # Create a very recent alert, not yet dismissed
-        alert = Alert.objects.create(
+        Alert.objects.create(
             entity=entity,
             alert_type=Alert.AlertType.METRIC_SPIKE,
             message="Stars spiked",

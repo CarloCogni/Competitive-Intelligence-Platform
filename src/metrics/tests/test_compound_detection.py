@@ -158,7 +158,7 @@ class TestRunCompoundDetection:
 
     def test_missing_metric_data_does_not_crash(self, ga_run):
         """Entity with no metric data is gracefully skipped."""
-        entity = EntityFactory()
+        EntityFactory()
         CompoundRule.objects.create(
             name="Stars + News",
             conditions=[

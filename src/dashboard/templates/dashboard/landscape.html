@@ -14,7 +14,7 @@
     <h1 class="text-xl font-bold text-white">Competitive Landscape</h1>
     <button @click="$dispatch('open-help', {
               title: 'Competitive Landscape — News Co-mentions',
-              body: '<p class=\'mb-3\'>Force-directed network showing which entities are mentioned together in the same news articles — the strongest public signal of competitive proximity.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-white font-semibold\'>Node size</span> = GitHub stars. <span class=\'text-white font-semibold\'>Node colour</span> = market vertical.</li><li><span class=\'text-brand-500 font-semibold\'>Orange border</span> = Blockstream product.</li><li><span class=\'text-amber-400 font-semibold\'>Edge thickness</span> = number of articles where both entities appeared together.</li><li><span class=\'text-white font-semibold\'>Center</span> = most co-mentioned. Periphery = niche or under-covered.</li><li><span class=\'text-white font-semibold\'>Hover</span> a node to preview connections. <span class=\'text-white font-semibold\'>Click</span> to open the detail panel — filter articles by co-entity, see colored badges per article.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Click the graph background to deselect.</p>'
+              body: '<p class=\'mb-3\'>Force-directed network showing which entities are mentioned together in the same news articles — the strongest public signal of competitive proximity.</p><ul class=\'space-y-2 list-none\'><li><span class=\'text-white font-semibold\'>Node size</span> = GitHub stars. <span class=\'text-white font-semibold\'>Node colour</span> = market vertical.</li><li><span class=\'text-brand-500 font-semibold\'>Orange border</span> = {{ primary_org|escapejs }} product.</li><li><span class=\'text-amber-400 font-semibold\'>Edge thickness</span> = number of articles where both entities appeared together.</li><li><span class=\'text-white font-semibold\'>Center</span> = most co-mentioned. Periphery = niche or under-covered.</li><li><span class=\'text-white font-semibold\'>Hover</span> a node to preview connections. <span class=\'text-white font-semibold\'>Click</span> to open the detail panel — filter articles by co-entity, see colored badges per article.</li></ul><p class=\'mt-3 text-gray-500 text-xs\'>Click the graph background to deselect.</p>'
             })"
             class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 hover:text-amber-300 transition-colors flex-shrink-0"
             title="How to read this graph?">?</button>
@@ -30,7 +30,7 @@
     {% endfor %}
     <span class="flex items-center gap-1 text-[10px] text-gray-400 ml-2">
       <span class="inline-block w-2.5 h-2.5 rounded-full border-2 border-brand-500 bg-transparent"></span>
-      Blockstream
+      {{ primary_org }}
     </span>
   </div>
 </div>
@@ -374,7 +374,7 @@
                   style="background:${d.color}1a; color:${d.color}; border:1px solid ${d.color}44">
               ${d.vertical_name}
             </span>
-            ${d.is_primary ? '<span class="text-[10px] text-brand-500 font-semibold">◈ Blockstream</span>' : ''}
+            ${d.is_primary ? '<span class="text-[10px] text-brand-500 font-semibold">◈ {{ primary_org|escapejs }}</span>' : ''}
           </div>
         </div>
         <a href="/entity/${d.id}/"

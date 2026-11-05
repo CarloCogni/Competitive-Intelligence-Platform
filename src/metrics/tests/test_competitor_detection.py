@@ -108,8 +108,8 @@ class TestRunCompetitorDetection:
     @patch("metrics.scraper.truncate_to_words", side_effect=lambda x: x)
     def test_creates_candidate_entities(self, mock_trunc, mock_scrape, mock_from_settings):
         # Setup: primary entity + recent news
-        primary = EntityFactory(slug="blockstream", is_primary=True)
-        item = NewsItemFactory(fetched_at=timezone.now())
+        EntityFactory(slug="blockstream", is_primary=True)
+        NewsItemFactory(fetched_at=timezone.now())
 
         mock_client = MagicMock()
         mock_client.chat.return_value = json.dumps(

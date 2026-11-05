@@ -167,12 +167,7 @@ def _build_compound_alert(
 
 def _backfill_severity(stdout, style) -> int:
     """Add severity to existing METRIC_SPIKE alerts that lack it. Returns patch count."""
-    no_sev = Alert.objects.filter(
-        alert_type=Alert.AlertType.METRIC_SPIKE,
-        metadata__severity=None,
-    )
-    # Also catch alerts where severity key is absent entirely
-    # JSONField lookup for missing key: use raw iteration for safety
+    # JSONField lookup for a missing key is unreliable across backends: iterate instead
     patched = 0
     for alert in Alert.objects.filter(alert_type=Alert.AlertType.METRIC_SPIKE):
         if isinstance(alert.metadata, dict) and "severity" not in alert.metadata:

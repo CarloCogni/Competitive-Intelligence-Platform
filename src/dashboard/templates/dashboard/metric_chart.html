@@ -24,7 +24,7 @@
     <div class="flex items-center gap-3 mb-1">
       <h1 class="text-2xl font-bold text-white">{{ metric_label }}</h1>
       {% if entity.is_primary %}
-        <span class="px-2 py-0.5 text-xs bg-brand-500 text-white rounded">Blockstream</span>
+        <span class="px-2 py-0.5 text-xs bg-brand-500 text-white rounded">{{ primary_org }}</span>
       {% else %}
         <span class="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded">Competitor</span>
       {% endif %}

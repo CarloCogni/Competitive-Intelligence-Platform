@@ -217,7 +217,10 @@ class Command(BaseCommand):
         parser.add_argument(
             "--clear",
             action="store_true",
-            help="Delete ALL existing alerts. Used alone it only clears; combine with --count to reseed.",
+            help=(
+                "Delete ALL existing alerts. Used alone it only clears; "
+                "combine with --count to reseed."
+            ),
         )
 
     def handle(self, *args, **options) -> None:
