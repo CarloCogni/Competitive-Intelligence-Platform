@@ -1470,7 +1470,7 @@ def _build_dashboard_context(request: HttpRequest) -> dict:
 @login_required
 def partial_exec_vertical_bars(request: HttpRequest) -> JsonResponse:
     """
-    Returns stacked bar data: Blockstream vs competitor totals per vertical.
+    Returns stacked bar data: primary-org vs competitor totals per vertical.
 
     GET ?key=<metric_key> (default: github_stars)
     Response: { verticals: [...], primary: [...], competitor: [...], label: str }
@@ -1516,7 +1516,7 @@ def partial_exec_vertical_bars(request: HttpRequest) -> JsonResponse:
 @login_required
 def partial_exec_radar(request: HttpRequest) -> JsonResponse:
     """
-    Returns radar chart data: avg Blockstream vs avg competitors across key metrics.
+    Returns radar chart data: avg primary-org vs avg competitors across key metrics.
 
     Response: { labels: [...], primary: [...], competitor: [...] }
     Values are normalized to 0-100.
@@ -1807,7 +1807,7 @@ def landscape_view(request: HttpRequest) -> HttpResponse:
     Force-directed network graph showing entities as nodes clustered by vertical.
 
     Nodes are coloured by vertical, sized by github_stars, and connected to
-    other entities in the same vertical ('competes with' edges). Blockstream
+    other entities in the same vertical ('competes with' edges). Primary-org
     products get an orange border ring.
 
     Scope note: this view intentionally ignores the watchlist toggle and always

@@ -129,7 +129,7 @@ Run through this checklist. A failed demo is worse than no demo.
 - Three columns: **News** | **Releases** | **Alerts**.
 - Filter by entity using the dropdown. Say: "Everything in one scrollable place. News articles entity-tagged, GitHub release events, threshold alerts. Filter to any entity instantly."
 
-**Transition:** "Now the part I think is most interesting — the AI layer. This wasn't in the assignment brief. I built it anyway."
+**Transition:** "Now the part I think is most interesting — the AI layer. This wasn't in the original brief. I built it anyway."
 
 ---
 
@@ -214,7 +214,7 @@ Run through this checklist. A failed demo is worse than no demo.
 **What you want them to feel:** "I want to pull this down and try it."
 
 **What to say:**
-> To summarize: 37 entities across 7 verticals, 7 independent data fetchers, 446 tests at 70% coverage. Three AI systems built beyond the assignment scope — anomaly detection with Isolation Forest, compound rule discovery with a Genetic Algorithm, and LLM-powered competitive briefings with local or cloud inference. No cloud dependencies, no vendor lock-in. Pull it from GitHub, swap in your own `entities.json`, and you have a competitive intelligence platform for any industry. Link is in the README.
+> To summarize: 37 entities across 7 verticals, 7 independent data fetchers, 446 tests at 70% coverage. Three AI systems built beyond the original scope — anomaly detection with Isolation Forest, compound rule discovery with a Genetic Algorithm, and LLM-powered competitive briefings with local or cloud inference. No cloud dependencies, no vendor lock-in. Pull it from GitHub, swap in your own `entities.json`, and you have a competitive intelligence platform for any industry. Link is in the README.
 
 ---
 

@@ -1,6 +1,6 @@
 # SPEC.md — Implementation Status
 
-What was implemented and what was not, relative to the assignment brief (Section 3).
+What was implemented and what was not, relative to the original brief.
 
 ---
 
@@ -62,7 +62,7 @@ Features not built in the current release, with implementation notes for future 
 
 **Description:** Add Bitcoin network and token market metrics (price, volume, hash rate) to the dashboard.
 
-**Why not built:** Secondary to core competitive metrics; adds scope beyond the assignment brief.
+**Why not built:** Secondary to core competitive metrics; adds scope beyond the original brief.
 
 **Data requirements:** CoinGecko API (free, no auth); Mempool.space API (free, no auth).
 

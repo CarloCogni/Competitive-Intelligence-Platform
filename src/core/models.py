@@ -51,7 +51,7 @@ class Vertical(models.Model):
 
 
 class Entity(models.Model):
-    """A tracked organisation or product (Blockstream product or competitor)."""
+    """A tracked organisation or product (one of your own, or a competitor)."""
 
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
@@ -62,10 +62,10 @@ class Entity(models.Model):
         blank=True,
         related_name="entities",
     )
-    # True = this is a Blockstream product; False = competitor
+    # True = one of the primary organisation's products (settings.PRIMARY_ORG_NAME)
     is_primary = models.BooleanField(
         default=False,
-        help_text="True for Blockstream products; False for competitors.",
+        help_text="True for your own organisation's products; False for competitors.",
     )
 
     # --- API identifiers (blank = fetcher skips this entity) ---

@@ -1,6 +1,6 @@
 # Architecture Reference
 
-This document is the deep-dive technical reference for CompIntel. It explains how the system is designed, how data flows through it, where decisions deviated from the original assignment, and how to extend it.
+This document is the deep-dive technical reference for CompIntel. It explains how the system is designed, how data flows through it, where decisions deviated from the original brief, and how to extend it.
 
 **Audience:** developers working in the codebase, evaluators reviewing the design, and non-technical stakeholders who want to understand the system without reading code.
 
@@ -11,11 +11,11 @@ This document is the deep-dive technical reference for CompIntel. It explains ho
 | Document | What it covers |
 |----------|----------------|
 | [README.md](../README.md) | Quick start (local dev), running fetchers, adding organisations, running tests |
-| [SPEC.md](../SPEC.md) | Implementation status vs. assignment brief, out-of-scope features with PRD-level notes |
+| [SPEC.md](../SPEC.md) | Implementation status vs. the original brief, out-of-scope features with PRD-level notes |
 | [CLAUDE.md](../CLAUDE.md) | Code conventions, design rules, skill files, review stance |
 | [docs/AI/overview.md](AI/overview.md) | Non-technical overview of all four AI subsystems |
 | [docs/management_commands.md](management_commands.md) | Reference for all Django management commands |
-| [Section 11 of this document](#11-assignment-trade-offs) | ADR: why Django monolith over React + FastAPI |
+| [Section 11 of this document](#11-scope-trade-offs) | ADR: why Django monolith over React + FastAPI |
 
 ---
 
@@ -115,7 +115,7 @@ This is the complete path from external API to user-visible output:
 | Rejected | Reason |
 |----------|--------|
 | **Celery + Redis** | APScheduler is sufficient for 7 fetcher jobs on hourly/daily intervals. No need for a separate broker process. |
-| **React / Vue** | HTMX delivers the same UX for this read-heavy internal tool with far less complexity. No build step, no client-side routing. See [Section 11 of this document](#11-assignment-trade-offs). |
+| **React / Vue** | HTMX delivers the same UX for this read-heavy internal tool with far less complexity. No build step, no client-side routing. See [Section 11 of this document](#11-scope-trade-offs). |
 | **FastAPI / Express** | Django's ORM, admin, auth, and template engine eliminate boilerplate that FastAPI would require building from scratch. |
 | **Recharts / D3.js** | Chart.js works natively with server-rendered templates. No npm, no bundler. |
 | **Django REST Framework** | No external API consumers exist. All rendering is server-side. DRF can be added alongside existing views when needed ([migration path in SPEC.md](../SPEC.md)). |
@@ -615,22 +615,22 @@ For a non-technical overview of these subsystems, see [docs/AI/overview.md](AI/o
 
 ---
 
-## 11. Assignment Trade-offs
+## 11. Scope Trade-offs
 
-This project was built as a 3-week MVP. The original assignment recommended a specific tech stack and required a minimum set of features. Several decisions deviated from the brief to ship faster with a single developer.
+This project was built as a 3-week MVP. The original brief recommended a specific tech stack and required a minimum set of features. Several decisions deviated from the brief to ship faster with a single developer.
 
 ### Architectural Deviations
 
-| Assignment Recommendation | What We Built | Why |
+| Original Brief | What We Built | Why |
 |---------------------------|--------------|-----|
-| React + Tailwind CSS + Recharts/D3.js | Django templates + HTMX + Tailwind (CDN) + Chart.js (CDN) | Internal tool, read-heavy workload. No build step, no client-side routing, no API serialisation layer. HTMX delivers the same UX with a fraction of the complexity. Full rationale in [Section 11.1 Architectural Deviations](#11-assignment-trade-offs). |
+| React + Tailwind CSS + Recharts/D3.js | Django templates + HTMX + Tailwind (CDN) + Chart.js (CDN) | Internal tool, read-heavy workload. No build step, no client-side routing, no API serialisation layer. HTMX delivers the same UX with a fraction of the complexity. Full rationale in [Section 11.1 Architectural Deviations](#11-scope-trade-offs). |
 | Node.js + Express or Python + FastAPI | Django 6.x monolith | Django's ORM, admin, auth, and template engine eliminate boilerplate. Scheduler and views share the same ORM — no API calls needed between components. |
 | Recharts or D3.js for charts | Chart.js 4.x (CDN) | Works natively with server-rendered templates. Data passed as inline JSON, no npm dependency, no bundler. |
 | 3+ fetchers minimum | 7 fetchers | GitHub (required) + News, App Store (iOS), Play Store (Android), Twitter/X, Reddit, Changelog. |
 
 ### Beyond the Brief (Bonus Features)
 
-These features were not required by the assignment but were implemented to demonstrate capability:
+These features were not required by the original brief but were implemented to demonstrate capability:
 
 | Feature | What It Does |
 |---------|-------------|
