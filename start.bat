@@ -24,7 +24,7 @@ if "%FRESH_DB%"=="1" (
     uv run python src/manage.py seed || goto :error
     uv run python src/manage.py seed_demo || goto :error
     echo.
-    echo  Tip: for months of real history, download db.sqlite3.zip from
+    echo  Tip: for real collected data (metrics, news, alerts), download db.sqlite3.zip from
     echo  https://github.com/CarloCogni/Competitive-Intelligence-Platform/releases/latest
     echo  and unzip it into src\ ^(replace the new database^).
 )
