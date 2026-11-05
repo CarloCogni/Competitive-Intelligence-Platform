@@ -34,7 +34,7 @@ env = environ.Env(
     EMAIL_HOST_USER=(str, ""),
     EMAIL_HOST_PASSWORD=(str, ""),
     EMAIL_USE_TLS=(bool, True),
-    DEFAULT_FROM_EMAIL=(str, "noreply@blockstream-bi.internal"),
+    DEFAULT_FROM_EMAIL=(str, "noreply@compintel.local"),
     SITE_URL=(str, "http://localhost:8000"),
     NEWS_ENRICHMENT_OLLAMA_ONLY=(bool, True),
 )

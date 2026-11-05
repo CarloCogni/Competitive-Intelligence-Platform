@@ -203,7 +203,7 @@ class EmailConfig(models.Model):
     )
     default_from_email = models.CharField(
         max_length=255,
-        default="noreply@blockstream-bi.internal",
+        default="noreply@compintel.local",
         help_text="From address shown on outgoing emails.",
     )
 

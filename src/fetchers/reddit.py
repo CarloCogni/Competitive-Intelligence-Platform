@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 REDDIT_SEARCH_URL = "https://www.reddit.com/search.json"
 # Reddit requires a non-generic User-Agent; requests without one are rate-limited
-REDDIT_USER_AGENT = "BlockStreamBI/1.0 (competitive intelligence)"
+REDDIT_USER_AGENT = "CompIntel/1.0 (competitive intelligence)"
 REQUEST_TIMEOUT = 10
 MAX_RESULTS_PER_PAGE = 100
 MAX_PAGES = 5  # cap total results at 500 posts per run

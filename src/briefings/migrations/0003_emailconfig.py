@@ -58,7 +58,7 @@ class Migration(migrations.Migration):
                 (
                     "default_from_email",
                     models.CharField(
-                        default="noreply@blockstream-bi.internal",
+                        default="noreply@compintel.local",
                         help_text="From address shown on outgoing emails.",
                         max_length=255,
                     ),

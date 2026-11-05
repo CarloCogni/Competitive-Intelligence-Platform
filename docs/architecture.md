@@ -1,6 +1,6 @@
 # Architecture Reference
 
-This document is the deep-dive technical reference for BlockStreamBI. It explains how the system is designed, how data flows through it, where decisions deviated from the original assignment, and how to extend it.
+This document is the deep-dive technical reference for CompIntel. It explains how the system is designed, how data flows through it, where decisions deviated from the original assignment, and how to extend it.
 
 **Audience:** developers working in the codebase, evaluators reviewing the design, and non-technical stakeholders who want to understand the system without reading code.
 
@@ -21,12 +21,12 @@ This document is the deep-dive technical reference for BlockStreamBI. It explain
 
 ## 1. System Overview
 
-BlockStreamBI is a competitive intelligence platform that automatically collects public signals — GitHub activity, news articles, app store ratings, social media mentions — for a set of tracked organisations and their competitors. It detects anomalies, fires alerts when metrics change significantly, and generates AI-powered intelligence briefings. All data is viewed through a server-rendered web dashboard.
+CompIntel is a competitive intelligence platform that automatically collects public signals — GitHub activity, news articles, app store ratings, social media mentions — for a set of tracked organisations and their competitors. It detects anomalies, fires alerts when metrics change significantly, and generates AI-powered intelligence briefings. All data is viewed through a server-rendered web dashboard.
 
 The system is built around three layers plus two cross-cutting concerns:
 
 ```
-  External APIs                    BlockStreamBI                              User
+  External APIs                    CompIntel                              User
  +-----------------+   +----------------------------------------------------+   +-----------+
  | GitHub REST API |   |                                                    |   |           |
  | Google News RSS |   |  Layer 1         Layer 2           Layer 3         |   |  Browser  |

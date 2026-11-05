@@ -1,5 +1,5 @@
 [project]
-name = "blockstreambi"
+name = "compintel"
 version = "0.1.0"
 description = "Competitive intelligence dashboard aggregating public signals (GitHub, news, app stores) for tracked organisations"
 license = "AGPL-3.0-or-later"

@@ -368,7 +368,7 @@ def weekly_digest_job() -> None:
             },
         )
         msg = EmailMultiAlternatives(
-            subject="BlockStream BI — Weekly Digest",
+            subject="CompIntel — Weekly Digest",
             body="\n".join(lines),
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user.email],
