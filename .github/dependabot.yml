@@ -1,14 +1,17 @@
+# Security-only mode: routine version-bump PRs are disabled
+# (open-pull-requests-limit: 0). Dependabot still opens PRs for dependencies
+# with known vulnerabilities (Settings -> Code security -> Dependabot
+# security updates). Merge those once CI passes.
 version: 2
 updates:
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "monthly"
-    groups:
-      python-dependencies:
-        patterns: ["*"]
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
+    open-pull-requests-limit: 0
